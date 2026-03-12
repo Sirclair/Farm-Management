@@ -1,9 +1,8 @@
 from rest_framework import serializers
 from .models import FlockBatch, DailyRecord
+from drf_spectacular.utils import extend_schema_field
 
 class DailyRecordSerializer(serializers.ModelSerializer):
-    # We use PrimaryKeyRelatedField to ensure the ID sent from frontend 
-    # is mapped to the 'flock' field in the model
     flock = serializers.PrimaryKeyRelatedField(queryset=FlockBatch.objects.all())
 
     class Meta:
@@ -11,9 +10,10 @@ class DailyRecordSerializer(serializers.ModelSerializer):
         fields = ['id', 'flock', 'date', 'mortality', 'feed_used_kg']
 
 class FlockBatchSerializer(serializers.ModelSerializer):
-    total_mortality_count = serializers.ReadOnlyField()
-    mortality_percentage = serializers.ReadOnlyField()
-    total_sold_count = serializers.ReadOnlyField()
+    # Apply the decorator to the field definitions or use SerializerMethodField
+    total_mortality_count = serializers.IntegerField(read_only=True)
+    total_sold_count = serializers.IntegerField(read_only=True)
+    mortality_percentage = serializers.FloatField(read_only=True)
 
     class Meta:
         model = FlockBatch

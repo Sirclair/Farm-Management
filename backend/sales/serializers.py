@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Order, OrderItem, Customer
+from drf_spectacular.utils import extend_schema_field
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -48,6 +49,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
         read_only_fields = ["total_amount", "farm"]
 
+    @extend_schema_field(serializers.CharField())
     def get_customer_name(self, obj):
 
         if obj.user_customer:
