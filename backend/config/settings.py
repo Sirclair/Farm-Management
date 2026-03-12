@@ -9,7 +9,6 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # 2. Security Settings
-# Pulls from .env - Fallbacks provided for local safety
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-change-this-in-env')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
@@ -43,7 +42,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware', # Essential for serving React dist
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -56,15 +55,22 @@ ROOT_URLCONF = 'config.urls'
 WSGI_APPLICATION = 'config.wsgi.application'
 AUTH_USER_MODEL = 'accounts.User'
 
-# 4. Database - Dynamic for Prod (Postgres) / Local (SQLite)
-DATABASES = {
-    'default': dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600
-    )
-}
+# 4. Database - Safe Dynamic Switching
+DATABASE_URL = os.getenv('DATABASE_URL')
 
-# 5. Templates - Configured to find React's index.html
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+
+# 5. Templates
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -104,11 +110,9 @@ SIMPLE_JWT = {
 }
 
 # 7. Static Files & CORS
-# STATIC_URL is set to 'assets/' to match Vite's default output folder
 STATIC_URL = 'assets/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Locations where Django looks for static files (the React build folder)
 STATICFILES_DIRS = [
     BASE_DIR.parent / 'frontend' / 'dist',
     BASE_DIR.parent / 'frontend' / 'dist' / 'assets',
@@ -121,24 +125,20 @@ CORS_ALLOWED_ORIGINS = [
 
 # 8. Production Security & Optimization
 if not DEBUG:
-    # SSL/HTTPS Settings
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    
-    # HSTS Settings
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 
-    # Static file compression and caching for production performance
     STORAGES = {
         "staticfiles": {
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
 
-# Internationalization
+# 9. Internationalization
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
