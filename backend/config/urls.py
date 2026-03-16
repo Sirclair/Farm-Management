@@ -33,5 +33,5 @@ urlpatterns = [
     # 4. React Frontend Catch-all (OUTSIDE the api prefix)
     # This must be the very last pattern. 
     # It serves index.html for any URL that doesn't match the paths above.
-    re_path(r"^.*$", TemplateView.as_view(template_name='index.html'), name="app"),
+    #re_path(r"^.*$", TemplateView.as_view(template_name='index.html'), name="app"),
 ]
