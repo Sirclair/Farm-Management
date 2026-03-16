@@ -11,8 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # 2. Security Settings
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-change-this-in-env')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
-
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost,clair.pythonanywhere.com').split(',')
 # 3. Application Definition
 INSTALLED_APPS = [
     'accounts',
@@ -118,10 +117,18 @@ STATICFILES_DIRS = [
     BASE_DIR.parent / 'frontend' / 'dist' / 'assets',
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://farm-management-omega-ten.vercel.app",
+    "https://clair.pythonanywhere.com",
+]
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-]
+    "https://farm-management-omega-ten.vercel.app",
+] 
+
+CORS_ALLOWED_CREDENTIALS = True
 
 # 8. Production Security & Optimization
 if not DEBUG:
