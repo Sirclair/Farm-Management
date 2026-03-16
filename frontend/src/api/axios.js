@@ -1,44 +1,64 @@
+// src/api/axios.js
 import axios from "axios";
 
-// This looks for a variable named VITE_API_URL. 
-// If it doesn't find it, it defaults to your local computer.
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/";
+// Base API URL (PythonAnywhere backend)
+const API_URL = "https://clair.pythonanywhere.com/api/";
 
+// Create axios instance
 const api = axios.create({
-  baseURL: API_BASE_URL
+  baseURL: API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Request interceptor → attach access token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("access");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
+// Response interceptor → auto refresh token if expired
 api.interceptors.response.use(
-  response => response,
-  async error => {
+  (response) => response,
+  async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // If token expired and we haven't retried yet
+    if (
+      error.response &&
+      error.response.status === 401 &&
+      !originalRequest._retry
+    ) {
       originalRequest._retry = true;
+
       try {
-        const refresh = localStorage.getItem("refresh");
+        const refreshToken = localStorage.getItem("refresh");
+        const res = await axios.post(`${API_URL}refresh/`, {
+          refresh: refreshToken,
+        });
 
-        // We use API_BASE_URL here too so the refresh logic works in production
-        const res = await axios.post(`${API_BASE_URL}refresh/`, { refresh });
+        const newAccess = res.data.access;
+        localStorage.setItem("access", newAccess);
 
-        localStorage.setItem("access", res.data.access);
-        originalRequest.headers.Authorization = `Bearer ${res.data.access}`;
-
+        // Update header and retry original request
+        originalRequest.headers.Authorization = `Bearer ${newAccess}`;
         return api(originalRequest);
-      } catch {
+      } catch (refreshError) {
+        // If refresh fails, clear tokens and redirect to login
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
-        window.location.href = "/login";
+        window.location.href = "/auth"; // adjust route if needed
+        return Promise.reject(refreshError);
       }
     }
+
     return Promise.reject(error);
   }
 );

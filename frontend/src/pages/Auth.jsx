@@ -33,7 +33,7 @@ export default function Auth() {
       setLoading(true);
       setLoadingLocal(true);
 
-      const res = await api.post("login/", {
+      const res = await api.post("api/login/", {
         username: formData.username,
         password: formData.password
       });
@@ -113,7 +113,7 @@ export default function Auth() {
 
       {/* LEFT BRAND PANEL */}
 
-      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-blue-700 to-indigo-900 text-white flex-col justify-center items-center p-16">
+      <div className="hidden lg:flex w-1/2 bg-linear-to-br from-blue-700 to-indigo-900 text-white flex-col justify-center items-center p-16">
 
         <motion.h1
           initial={{opacity:0,y:-20}}
