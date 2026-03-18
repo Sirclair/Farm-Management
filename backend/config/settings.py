@@ -17,10 +17,10 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
 DEBUG = os.getenv("DEBUG", "False") == "True"
-ALLOWED_HOSTS = os.getenv(
-    "ALLOWED_HOSTS",
-    "127.0.0.1,localhost,clair.pythonanywhere.com"
-).split(",")
+# Use a fallback list if the environment variable is empty
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "clair.pythonanywhere.com,localhost,127.0.0.1").split(",")
+# This trims any accidental hidden spaces
+ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS if host.strip()]
 
 # --------------------------------------------------
 # Applications
