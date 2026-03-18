@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 from datetime import timedelta
-import dj_database_url
 from dotenv import load_dotenv
 
 # --------------------------------------------------
@@ -14,13 +13,11 @@ load_dotenv()
 # Security & Environment
 # --------------------------------------------------
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
-DEBUG = os.getenv("DEBUG", "False") == "True"
+DEBUG = os.getenv("DEBUG", "True") == "True"  # Keep True for testing
 
-# Allow your frontend and backend domains only
 ALLOWED_HOSTS = [
     "clair.pythonanywhere.com",
     "farm-management-omega-ten.vercel.app",
-    "*.onrender.com",
 ]
 
 # --------------------------------------------------
@@ -70,23 +67,21 @@ MIDDLEWARE = [
 ]
 
 # --------------------------------------------------
-# URLs / WSGI / Auth
+# URL / WSGI / Auth
 # --------------------------------------------------
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 AUTH_USER_MODEL = "accounts.User"
 
 # --------------------------------------------------
-# Database (Postgres / SQLite fallback)
+# Database (SQLite fallback for PythonAnywhere)
 # --------------------------------------------------
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL")  # Optional external DB
 
 if DATABASE_URL:
+    import dj_database_url
     DATABASES = {
-        "default": dj_database_url.config(
-            default=DATABASE_URL,
-            conn_max_age=600,
-        )
+        "default": dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
     }
 else:
     DATABASES = {
@@ -150,7 +145,7 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 # --------------------------------------------------
-# CORS / CSRF
+# CORS / CSRF for React frontend
 # --------------------------------------------------
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
@@ -168,11 +163,10 @@ CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 CSRF_TRUSTED_ORIGINS = [
     "https://farm-management-omega-ten.vercel.app",
     "https://clair.pythonanywhere.com",
-    "https://*.onrender.com",
 ]
 
 # --------------------------------------------------
-# Production Security
+# Production Security (PythonAnywhere SSL)
 # --------------------------------------------------
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
