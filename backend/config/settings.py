@@ -14,11 +14,14 @@ load_dotenv()
 # Security & Environment
 # --------------------------------------------------
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
-
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-# Allow all during deployment (lock later)
-ALLOWED_HOSTS = ["*"]
+# Allow your frontend and backend domains only
+ALLOWED_HOSTS = [
+    "clair.pythonanywhere.com",
+    "farm-management-omega-ten.vercel.app",
+    "*.onrender.com",
+]
 
 # --------------------------------------------------
 # Applications
@@ -55,7 +58,7 @@ INSTALLED_APPS = [
 # Middleware
 # --------------------------------------------------
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",  # MUST be first
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -67,14 +70,14 @@ MIDDLEWARE = [
 ]
 
 # --------------------------------------------------
-# URL / WSGI / Auth
+# URLs / WSGI / Auth
 # --------------------------------------------------
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 AUTH_USER_MODEL = "accounts.User"
 
 # --------------------------------------------------
-# Database (Neon / Render Ready)
+# Database (Postgres / SQLite fallback)
 # --------------------------------------------------
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -141,25 +144,35 @@ SIMPLE_JWT = {
 # --------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 # --------------------------------------------------
-# CORS / CSRF (OPEN for deployment)
+# CORS / CSRF
 # --------------------------------------------------
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    "authorization",
+    "content-type",
+    "accept",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://*.vercel.app",
+    "https://farm-management-omega-ten.vercel.app",
+    "https://clair.pythonanywhere.com",
     "https://*.onrender.com",
 ]
 
 # --------------------------------------------------
-# Production Security (Safe for Render)
+# Production Security
 # --------------------------------------------------
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
