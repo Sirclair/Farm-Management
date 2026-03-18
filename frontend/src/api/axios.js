@@ -1,12 +1,11 @@
-// src/api/axios.js
 import axios from "axios";
 
-// Base API URL (PythonAnywhere backend)
-const API_URL = "https://clair.pythonanywhere.com/api/";
+// Base URL points to the root of your PythonAnywhere backend
+const BASE_URL = "https://clair.pythonanywhere.com";
 
 // Create axios instance
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -30,7 +29,7 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If token expired and we haven't retried yet
+    // If token expired (401) and we haven't retried this specific request yet
     if (
       error.response &&
       error.response.status === 401 &&
@@ -40,21 +39,23 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = localStorage.getItem("refresh");
-        const res = await axios.post(`${API_URL}refresh/`, {
+        
+        // Note: We use the full path /api/refresh/ here
+        const res = await axios.post(`${BASE_URL}/api/refresh/`, {
           refresh: refreshToken,
         });
 
         const newAccess = res.data.access;
         localStorage.setItem("access", newAccess);
 
-        // Update header and retry original request
+        // Update header and retry the original request
         originalRequest.headers.Authorization = `Bearer ${newAccess}`;
         return api(originalRequest);
       } catch (refreshError) {
-        // If refresh fails, clear tokens and redirect to login
+        // If refresh fails, the user needs to log in again
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
-        window.location.href = "/auth"; // adjust route if needed
+        window.location.href = "/auth"; 
         return Promise.reject(refreshError);
       }
     }
