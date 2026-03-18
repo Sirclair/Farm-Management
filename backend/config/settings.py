@@ -13,17 +13,12 @@ load_dotenv()
 # --------------------------------------------------
 # Security & Environment
 # --------------------------------------------------
-SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
+
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-# Automatically trust the domain provided by the hosting platform
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-if os.getenv("SEVALLA_APP_DOMAIN"):
-    ALLOWED_HOSTS.append(os.getenv("SEVALLA_APP_DOMAIN"))
-if os.getenv("RENDER_EXTERNAL_HOSTNAME"):
-    ALLOWED_HOSTS.append(os.getenv("RENDER_EXTERNAL_HOSTNAME"))
-
-ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS if host.strip()]
+# Allow all during deployment (lock later)
+ALLOWED_HOSTS = ["*"]
 
 # --------------------------------------------------
 # Applications
@@ -44,7 +39,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    "whitenoise.runserver_nostatic", # Better static handling
+    "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
 
     # Third Party
@@ -62,7 +57,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware", # Position is critical
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -79,7 +74,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 AUTH_USER_MODEL = "accounts.User"
 
 # --------------------------------------------------
-# Database (Auto-Detects Environment)
+# Database (Neon / Render Ready)
 # --------------------------------------------------
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -88,8 +83,6 @@ if DATABASE_URL:
         "default": dj_database_url.config(
             default=DATABASE_URL,
             conn_max_age=600,
-            conn_health_checks=True,
-            ssl_require=True, 
         )
     }
 else:
@@ -148,43 +141,30 @@ SIMPLE_JWT = {
 # --------------------------------------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-# Cloud-optimized storage
+
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 # --------------------------------------------------
-# CORS / CSRF
+# CORS / CSRF (OPEN for deployment)
 # --------------------------------------------------
-CSRF_TRUSTED_ORIGINS = [
-    "https://farm-management-omega-ten.vercel.app",
-]
-
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://farm-management-omega-ten.vercel.app",
-]
-
-# Dynamically add the current app's domain to trusted lists
-if os.getenv("SEVALLA_APP_DOMAIN"):
-    domain = f"https://{os.getenv('SEVALLA_APP_DOMAIN')}"
-    CSRF_TRUSTED_ORIGINS.append(domain)
-    CORS_ALLOWED_ORIGINS.append(domain)
-
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.vercel.app",
+    "https://*.onrender.com",
+]
+
 # --------------------------------------------------
-# Production Security Headers
+# Production Security (Safe for Render)
 # --------------------------------------------------
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # --------------------------------------------------
@@ -194,4 +174,5 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
