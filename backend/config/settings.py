@@ -7,25 +7,27 @@ from dotenv import load_dotenv
 # --------------------------------------------------
 # Base Setup
 # --------------------------------------------------
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv()
 
 # --------------------------------------------------
-# Security
+# Security & Environment
 # --------------------------------------------------
-
-SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me-in-production")
 DEBUG = os.getenv("DEBUG", "False") == "True"
-# Use a fallback list if the environment variable is empty
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "clair.pythonanywhere.com,localhost,127.0.0.1").split(",")
-# This trims any accidental hidden spaces
+
+# Automatically trust the domain provided by the hosting platform
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+if os.getenv("SEVALLA_APP_DOMAIN"):
+    ALLOWED_HOSTS.append(os.getenv("SEVALLA_APP_DOMAIN"))
+if os.getenv("RENDER_EXTERNAL_HOSTNAME"):
+    ALLOWED_HOSTS.append(os.getenv("RENDER_EXTERNAL_HOSTNAME"))
+
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS if host.strip()]
 
 # --------------------------------------------------
 # Applications
 # --------------------------------------------------
-
 INSTALLED_APPS = [
     # Local Apps
     "accounts",
@@ -42,6 +44,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "whitenoise.runserver_nostatic", # Better static handling
     "django.contrib.staticfiles",
 
     # Third Party
@@ -56,11 +59,10 @@ INSTALLED_APPS = [
 # --------------------------------------------------
 # Middleware
 # --------------------------------------------------
-
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware", # Position is critical
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -70,18 +72,15 @@ MIDDLEWARE = [
 ]
 
 # --------------------------------------------------
-# URL / WSGI
+# URL / WSGI / Auth
 # --------------------------------------------------
-
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
-
 AUTH_USER_MODEL = "accounts.User"
 
 # --------------------------------------------------
-# Database
+# Database (Auto-Detects Environment)
 # --------------------------------------------------
-
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
@@ -90,7 +89,7 @@ if DATABASE_URL:
             default=DATABASE_URL,
             conn_max_age=600,
             conn_health_checks=True,
-            ssl_require=True, # Forces SSL for Aiven
+            ssl_require=True, 
         )
     }
 else:
@@ -104,7 +103,6 @@ else:
 # --------------------------------------------------
 # Templates
 # --------------------------------------------------
-
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -122,9 +120,8 @@ TEMPLATES = [
 ]
 
 # --------------------------------------------------
-# REST Framework
+# REST Framework & JWT
 # --------------------------------------------------
-
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -138,12 +135,8 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
-# --------------------------------------------------
-# JWT
-# --------------------------------------------------
-
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
@@ -151,20 +144,21 @@ SIMPLE_JWT = {
 }
 
 # --------------------------------------------------
-# Static Files
+# Static & Media Files
 # --------------------------------------------------
-
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# Cloud-optimized storage
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 # --------------------------------------------------
 # CORS / CSRF
 # --------------------------------------------------
-
 CSRF_TRUSTED_ORIGINS = [
     "https://farm-management-omega-ten.vercel.app",
-    "https://clair.pythonanywhere.com",
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -173,12 +167,17 @@ CORS_ALLOWED_ORIGINS = [
     "https://farm-management-omega-ten.vercel.app",
 ]
 
+# Dynamically add the current app's domain to trusted lists
+if os.getenv("SEVALLA_APP_DOMAIN"):
+    domain = f"https://{os.getenv('SEVALLA_APP_DOMAIN')}"
+    CSRF_TRUSTED_ORIGINS.append(domain)
+    CORS_ALLOWED_ORIGINS.append(domain)
+
 CORS_ALLOW_CREDENTIALS = True
 
 # --------------------------------------------------
-# Security (Production)
+# Production Security Headers
 # --------------------------------------------------
-
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
@@ -186,11 +185,11 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # --------------------------------------------------
 # Internationalization
 # --------------------------------------------------
-
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
