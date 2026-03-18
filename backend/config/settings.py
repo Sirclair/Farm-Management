@@ -13,7 +13,7 @@ load_dotenv()
 # Security & Environment
 # --------------------------------------------------
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
-DEBUG = os.getenv("DEBUG", "True") == "True"  # Keep True for testing
+DEBUG = os.getenv("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = [
     "clair.pythonanywhere.com",
@@ -21,10 +21,10 @@ ALLOWED_HOSTS = [
 ]
 
 # --------------------------------------------------
-# Applications
+# Installed Apps
 # --------------------------------------------------
 INSTALLED_APPS = [
-    # Local Apps
+    # Local apps
     "accounts",
     "flock",
     "finance",
@@ -33,7 +33,7 @@ INSTALLED_APPS = [
     "products",
     "inventory",
 
-    # Django Core
+    # Django core
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
 
-    # Third Party
+    # Third-party
     "rest_framework",
     "rest_framework.authtoken",
     "rest_framework_simplejwt.token_blacklist",
@@ -67,7 +67,7 @@ MIDDLEWARE = [
 ]
 
 # --------------------------------------------------
-# URL / WSGI / Auth
+# URLs / WSGI / Auth
 # --------------------------------------------------
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
@@ -76,7 +76,7 @@ AUTH_USER_MODEL = "accounts.User"
 # --------------------------------------------------
 # Database (SQLite fallback for PythonAnywhere)
 # --------------------------------------------------
-DATABASE_URL = os.getenv("DATABASE_URL")  # Optional external DB
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
     import dj_database_url
@@ -166,7 +166,7 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # --------------------------------------------------
-# Production Security (PythonAnywhere SSL)
+# Production Security
 # --------------------------------------------------
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
