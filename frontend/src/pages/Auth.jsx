@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect } from "react";
+import { useState, useContext } from "react";
 import { UserContext } from "../UserContext";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -7,7 +7,7 @@ import Spinner from "../components/Spinner";
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user, setUser, setLoading } = useContext(UserContext);
+  const { setUser, setLoading } = useContext(UserContext);
 
   const [mode, setMode] = useState("login");
   const [formData, setFormData] = useState({
@@ -20,23 +20,9 @@ export default function Auth() {
   const [error, setError] = useState("");
   const [loadingLocal, setLoadingLocal] = useState(false);
 
-  // Auto-login if token exists
-  useEffect(() => {
-    const token = localStorage.getItem("access");
-    if (token) {
-      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      api.get("my-farm/accounts/me/")
-        .then(res => {
-          setUser(res.data);
-          routeUser(res.data);
-        })
-        .catch(() => {
-          localStorage.removeItem("access");
-          localStorage.removeItem("refresh");
-        });
-    }
-  }, []);
-
+  // ------------------------
+  // LOGIN FUNCTION
+  // ------------------------
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
@@ -44,6 +30,7 @@ export default function Auth() {
       setLoadingLocal(true);
       setError("");
 
+      // Login request
       const res = await api.post("api/login/", {
         username: formData.username,
         password: formData.password,
@@ -54,30 +41,58 @@ export default function Auth() {
       localStorage.setItem("refresh", res.data.refresh);
       api.defaults.headers.common["Authorization"] = `Bearer ${res.data.access}`;
 
+      // Fetch user
       const userRes = await api.get("my-farm/accounts/me/");
       setUser(userRes.data);
-      routeUser(userRes.data);
 
+      routeUser(userRes.data);
     } catch (err) {
       console.error("Login error:", err);
-      setError(
-        err.response?.data?.detail || "Invalid username or password"
-      );
+      setError(err.response?.data?.detail || "Invalid username or password");
     } finally {
       setLoadingLocal(false);
       setLoading(false);
     }
   };
 
+  // ------------------------
+  // REGISTER FUNCTION
+  // ------------------------
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
       setLoadingLocal(true);
       setError("");
 
-      await api.post("my-farm/accounts/register/", formData);
-      setMode("login");
-      setError("Registration successful. Please login.");
+      // 1️⃣ Register the user
+      await api.post("my-farm/accounts/register/", {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+      });
+
+      // 2️⃣ Auto-login immediately after registration
+      const loginRes = await api.post("api/login/", {
+        username: formData.username,
+        password: formData.password,
+      });
+
+      localStorage.setItem("access", loginRes.data.access);
+      localStorage.setItem("refresh", loginRes.data.refresh);
+      api.defaults.headers.common["Authorization"] = `Bearer ${loginRes.data.access}`;
+
+      // 3️⃣ Fetch user object
+      const userRes = await api.get("my-farm/accounts/me/");
+      setUser(userRes.data);
+
+      // 4️⃣ Create farm if role is farmer
+      if (formData.role === "farmer") {
+        await api.post("my-farm/farms/", { name: formData.farm_name });
+      }
+
+      // 5️⃣ Route user
+      routeUser(userRes.data);
 
     } catch (err) {
       console.error("Registration error:", err);
@@ -87,6 +102,9 @@ export default function Auth() {
     }
   };
 
+  // ------------------------
+  // ROUTE USER BASED ON ROLE
+  // ------------------------
   const routeUser = (user) => {
     if (user.role === "farmer") return navigate("/dashboard");
     if (user.role === "customer") return navigate("/marketplace");
@@ -94,6 +112,9 @@ export default function Auth() {
     navigate("/dashboard");
   };
 
+  // ------------------------
+  // RENDER
+  // ------------------------
   return (
     <div className="min-h-screen flex">
       {/* LEFT BRAND PANEL */}
@@ -178,6 +199,7 @@ export default function Auth() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                 />
+
                 <div className="flex gap-2">
                   <button
                     type="button"
