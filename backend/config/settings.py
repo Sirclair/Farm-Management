@@ -18,6 +18,9 @@ DEBUG = os.getenv("DEBUG", "True") == "True"
 ALLOWED_HOSTS = [
     "clair.pythonanywhere.com",
     "farm-management-omega-ten.vercel.app",
+    "farm-management-8o37.onrender.com"
+    "localhost"
+    "127.0.0.1"
 ]
 
 # --------------------------------------------------
@@ -163,6 +166,7 @@ CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 CSRF_TRUSTED_ORIGINS = [
     "https://farm-management-omega-ten.vercel.app",
     "https://clair.pythonanywhere.com",
+    "https://farm-management-8o37.onrender.com"
 ]
 
 # --------------------------------------------------
