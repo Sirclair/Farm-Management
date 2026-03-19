@@ -1,7 +1,8 @@
 import axios from "axios";
 
-// Base URL points to the root of your PythonAnywhere backend
-const BASE_URL = "https://clair.pythonanywhere.com";
+// 2026 Best Practice: Use an environment variable. 
+// If it's not set (like when you're working locally), it falls back to localhost.
+const BASE_URL = import.meta.env.VITE_API_URL || "https://your-new-app.onrender.com";
 
 // Create axios instance
 const api = axios.create({
@@ -29,7 +30,7 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If token expired (401) and we haven't retried this specific request yet
+    // Handle 401 Unauthorized (Expired Token)
     if (
       error.response &&
       error.response.status === 401 &&
@@ -40,7 +41,7 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem("refresh");
         
-        // Note: We use the full path /api/refresh/ here
+        // Use the instance base URL for refreshing
         const res = await axios.post(`${BASE_URL}/api/refresh/`, {
           refresh: refreshToken,
         });
@@ -52,10 +53,12 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newAccess}`;
         return api(originalRequest);
       } catch (refreshError) {
-        // If refresh fails, the user needs to log in again
+        // If refresh fails, clear tokens and redirect to login
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
-        window.location.href = "/auth"; 
+        
+        // Use your actual login route (e.g., /login or /auth)
+        window.location.href = "/login"; 
         return Promise.reject(refreshError);
       }
     }
