@@ -15,13 +15,7 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = [
-    "clair.pythonanywhere.com",
-    "farm-management-omega-ten.vercel.app",
-    "farm-management-8o37.onrender.com"
-    "localhost"
-    "127.0.0.1"
-]
+ALLOWED_HOSTS = ['*']
 
 # --------------------------------------------------
 # Installed Apps
