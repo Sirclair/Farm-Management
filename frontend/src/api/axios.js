@@ -1,15 +1,16 @@
 import axios from "axios";
 
-// 2026 Best Practice: Use an environment variable. 
-// If it's not set (like when you're working locally), it falls back to localhost.
-const BASE_URL = import.meta.env.VITE_API_URL || "https://farm-management-8o37.onrender.com";
+// This helper ensures we don't get double slashes //
+const getBaseURL = () => {
+  let url = import.meta.env.VITE_API_URL || "https://farm-management-8o37.onrender.com";
+  return url.endsWith('/') ? url.slice(0, -1) : url;
+};
 
-// Create axios instance
+const BASE_URL = getBaseURL();
+
 const api = axios.create({
-  baseURL: BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  baseURL: BASE_URL, 
+  headers: { "Content-Type": "application/json" },
 });
 
 // Request interceptor → attach access token
