@@ -2,7 +2,7 @@ import axios from "axios";
 
 // 2026 Best Practice: Use an environment variable. 
 // If it's not set (like when you're working locally), it falls back to localhost.
-const BASE_URL = import.meta.env.VITE_API_URL || "https://your-new-app.onrender.com";
+const BASE_URL = import.meta.env.VITE_API_URL || "https://farm-management-8o37.onrender.com";
 
 // Create axios instance
 const api = axios.create({
