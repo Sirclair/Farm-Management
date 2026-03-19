@@ -30,24 +30,25 @@ export default function Auth() {
       setLoadingLocal(true);
       setError("");
 
-      // Login request
+      // 1. Authenticate - Hits: ...onrender.com/api/login/
       const res = await api.post("api/login/", {
         username: formData.username,
         password: formData.password,
       });
 
-      // Store tokens
+      // 2. Store tokens (Interceptor in axios.js will now automatically pick these up)
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
-      api.defaults.headers.common["Authorization"] = `Bearer ${res.data.access}`;
 
-      // Fetch user
-      const userRes = await api.get("my-farm/accounts/me/");
+      // 3. Fetch user profile - Hits: ...onrender.com/api/my-farm/accounts/me/
+      // Added "api/" prefix to fix the 404 error
+      const userRes = await api.get("api/my-farm/accounts/me/");
       setUser(userRes.data);
 
       routeUser(userRes.data);
     } catch (err) {
       console.error("Login error:", err);
+      // Display the specific error from Django if it exists
       setError(err.response?.data?.detail || "Invalid username or password");
     } finally {
       setLoadingLocal(false);
@@ -64,15 +65,15 @@ export default function Auth() {
       setLoadingLocal(true);
       setError("");
 
-      // 1️⃣ Register the user
-      await api.post("my-farm/accounts/register/", {
+      // 1. Register - Hits: ...onrender.com/api/my-farm/accounts/register/
+      await api.post("api/my-farm/accounts/register/", {
         username: formData.username,
         email: formData.email,
         password: formData.password,
         role: formData.role,
       });
 
-      // 2️⃣ Auto-login immediately after registration
+      // 2. Auto-login immediately
       const loginRes = await api.post("api/login/", {
         username: formData.username,
         password: formData.password,
@@ -80,31 +81,27 @@ export default function Auth() {
 
       localStorage.setItem("access", loginRes.data.access);
       localStorage.setItem("refresh", loginRes.data.refresh);
-      api.defaults.headers.common["Authorization"] = `Bearer ${loginRes.data.access}`;
 
-      // 3️⃣ Fetch user object
-      const userRes = await api.get("my-farm/accounts/me/");
+      // 3. Fetch user object
+      const userRes = await api.get("api/my-farm/accounts/me/");
       setUser(userRes.data);
 
-      // 4️⃣ Create farm if role is farmer
+      // 4. Create farm if role is farmer
       if (formData.role === "farmer") {
-        await api.post("my-farm/farms/", { name: formData.farm_name });
+        await api.post("api/my-farm/farms/", { name: formData.farm_name });
       }
 
-      // 5️⃣ Route user
       routeUser(userRes.data);
-
     } catch (err) {
       console.error("Registration error:", err);
-      setError(err.response?.data?.error || "Registration failed");
+      // Handle Django's nested error responses
+      const backendError = err.response?.data?.error || err.response?.data?.detail;
+      setError(backendError || "Registration failed. Please try again.");
     } finally {
       setLoadingLocal(false);
     }
   };
 
-  // ------------------------
-  // ROUTE USER BASED ON ROLE
-  // ------------------------
   const routeUser = (user) => {
     if (user.role === "farmer") return navigate("/dashboard");
     if (user.role === "customer") return navigate("/marketplace");
@@ -112,13 +109,10 @@ export default function Auth() {
     navigate("/dashboard");
   };
 
-  // ------------------------
-  // RENDER
-  // ------------------------
   return (
     <div className="min-h-screen flex">
       {/* LEFT BRAND PANEL */}
-      <div className="hidden lg:flex w-1/2 bg-linear-to-br from-blue-700 to-indigo-900 text-white flex-col justify-center items-center p-16">
+      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-blue-700 to-indigo-900 text-white flex-col justify-center items-center p-16">
         <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-5xl font-black mb-6">
           FarmOS
         </motion.h1>
@@ -130,23 +124,26 @@ export default function Auth() {
       {/* FORM SIDE */}
       <div className="w-full lg:w-1/2 flex items-center justify-center bg-slate-50 p-8">
         <div className="w-full max-w-md bg-white shadow-2xl rounded-3xl p-10">
-          {/* MODE SWITCH */}
           <div className="flex mb-8 bg-slate-100 rounded-xl p-1">
             <button
               onClick={() => setMode("login")}
-              className={`flex-1 py-2 text-sm font-bold rounded-lg ${mode === "login" ? "bg-white shadow" : "text-slate-500"}`}
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mode === "login" ? "bg-white shadow text-blue-600" : "text-slate-500"}`}
             >
               Login
             </button>
             <button
               onClick={() => setMode("register")}
-              className={`flex-1 py-2 text-sm font-bold rounded-lg ${mode === "register" ? "bg-white shadow" : "text-slate-500"}`}
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mode === "register" ? "bg-white shadow text-blue-600" : "text-slate-500"}`}
             >
               Register
             </button>
           </div>
 
-          {error && <div className="text-red-500 text-xs mb-4">{error}</div>}
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 text-xs mb-4 rounded">
+              {error}
+            </div>
+          )}
 
           <AnimatePresence mode="wait">
             {mode === "login" && (
@@ -159,19 +156,22 @@ export default function Auth() {
                 className="space-y-4"
               >
                 <input
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-transparent focus:border-blue-500 focus:bg-white outline-none transition-all"
                   placeholder="Username"
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   required
                 />
                 <input
                   type="password"
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-transparent focus:border-blue-500 focus:bg-white outline-none transition-all"
                   placeholder="Password"
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
                 />
-                <button className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">
+                <button 
+                   disabled={loadingLocal}
+                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition-colors flex justify-center items-center"
+                >
                   {loadingLocal ? <Spinner /> : "Login"}
                 </button>
               </motion.form>
@@ -187,14 +187,14 @@ export default function Auth() {
                 className="space-y-4"
               >
                 <input
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-transparent focus:border-blue-500 focus:bg-white outline-none transition-all"
                   placeholder="Username"
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   required
                 />
                 <input
                   type="email"
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-transparent focus:border-blue-500 focus:bg-white outline-none transition-all"
                   placeholder="Email"
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
@@ -204,14 +204,14 @@ export default function Auth() {
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, role: "farmer" })}
-                    className={`flex-1 py-2 rounded-lg text-sm font-bold ${formData.role === "farmer" ? "bg-blue-600 text-white" : "bg-slate-100"}`}
+                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${formData.role === "farmer" ? "bg-blue-600 text-white shadow-md" : "bg-slate-100 text-slate-500"}`}
                   >
                     Farmer
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, role: "customer" })}
-                    className={`flex-1 py-2 rounded-lg text-sm font-bold ${formData.role === "customer" ? "bg-blue-600 text-white" : "bg-slate-100"}`}
+                    className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${formData.role === "customer" ? "bg-blue-600 text-white shadow-md" : "bg-slate-100 text-slate-500"}`}
                   >
                     Customer
                   </button>
@@ -219,7 +219,7 @@ export default function Auth() {
 
                 {formData.role === "farmer" && (
                   <input
-                    className="w-full px-4 py-3 rounded-xl bg-blue-50"
+                    className="w-full px-4 py-3 rounded-xl bg-blue-50 border border-blue-100 focus:border-blue-500 outline-none transition-all"
                     placeholder="Farm Name"
                     onChange={(e) => setFormData({ ...formData, farm_name: e.target.value })}
                     required
@@ -228,13 +228,16 @@ export default function Auth() {
 
                 <input
                   type="password"
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-transparent focus:border-blue-500 focus:bg-white outline-none transition-all"
                   placeholder="Password"
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
                 />
 
-                <button className="w-full bg-green-600 text-white py-3 rounded-xl font-bold">
+                <button 
+                  disabled={loadingLocal}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold transition-colors flex justify-center items-center"
+                >
                   {loadingLocal ? <Spinner /> : "Create Account"}
                 </button>
               </motion.form>
