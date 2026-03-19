@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import path, include, re_path
 from django.views.generic import TemplateView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
@@ -7,6 +8,9 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
+def api_home(request):
+    return JsonResponse({"status": "online", "message": "Farm Management API"})
+      
 urlpatterns = [
     # Admin Interface
     path("admin/", admin.site.urls),
@@ -33,5 +37,5 @@ urlpatterns = [
     # 4. React Frontend Catch-all (OUTSIDE the api prefix)
     # This must be the very last pattern. 
     # It serves index.html for any URL that doesn't match the paths above.
-    re_path(r"^.*$", TemplateView.as_view(template_name='index.html'), name="app"),
+   path("", api_home),
 ]
