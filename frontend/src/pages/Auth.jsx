@@ -20,9 +20,6 @@ export default function Auth() {
   const [error, setError] = useState("");
   const [loadingLocal, setLoadingLocal] = useState(false);
 
-  // ------------------------
-  // LOGIN FUNCTION
-  // ------------------------
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
@@ -30,25 +27,20 @@ export default function Auth() {
       setLoadingLocal(true);
       setError("");
 
-      // 1. Authenticate - Hits: ...onrender.com/api/login/
       const res = await api.post("api/login/", {
         username: formData.username,
         password: formData.password,
       });
 
-      // 2. Store tokens (Interceptor in axios.js will now automatically pick these up)
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
 
-      // 3. Fetch user profile - Hits: ...onrender.com/api/my-farm/accounts/me/
-      // Added "api/" prefix to fix the 404 error
       const userRes = await api.get("api/my-farm/accounts/me/");
       setUser(userRes.data);
 
       routeUser(userRes.data);
     } catch (err) {
       console.error("Login error:", err);
-      // Display the specific error from Django if it exists
       setError(err.response?.data?.detail || "Invalid username or password");
     } finally {
       setLoadingLocal(false);
@@ -56,16 +48,13 @@ export default function Auth() {
     }
   };
 
-  // ------------------------
-  // REGISTER FUNCTION
-  // ------------------------
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
       setLoadingLocal(true);
       setError("");
 
-      // 1. Register - Hits: ...onrender.com/api/my-farm/accounts/register/
+      // 1. Register - Path matched to your nested urls.py
       await api.post("api/my-farm/accounts/register/", {
         username: formData.username,
         email: formData.email,
@@ -73,7 +62,7 @@ export default function Auth() {
         role: formData.role,
       });
 
-      // 2. Auto-login immediately
+      // 2. Auto-login immediately to get the token needed for Farm creation
       const loginRes = await api.post("api/login/", {
         username: formData.username,
         password: formData.password,
@@ -82,19 +71,20 @@ export default function Auth() {
       localStorage.setItem("access", loginRes.data.access);
       localStorage.setItem("refresh", loginRes.data.refresh);
 
-      // 3. Fetch user object
+      // 3. Create farm - Path: api/my-farm/accounts/farms/ (based on your router)
+      if (formData.role === "farmer") {
+        await api.post("api/my-farm/accounts/farms/", { 
+          name: formData.farm_name 
+        });
+      }
+
+      // 4. Fetch full user object
       const userRes = await api.get("api/my-farm/accounts/me/");
       setUser(userRes.data);
-
-      // 4. Create farm if role is farmer
-      if (formData.role === "farmer") {
-        await api.post("api/my-farm/farms/", { name: formData.farm_name });
-      }
 
       routeUser(userRes.data);
     } catch (err) {
       console.error("Registration error:", err);
-      // Handle Django's nested error responses
       const backendError = err.response?.data?.error || err.response?.data?.detail;
       setError(backendError || "Registration failed. Please try again.");
     } finally {
@@ -111,7 +101,6 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex">
-      {/* LEFT BRAND PANEL */}
       <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-blue-700 to-indigo-900 text-white flex-col justify-center items-center p-16">
         <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-5xl font-black mb-6">
           FarmOS
@@ -121,7 +110,6 @@ export default function Auth() {
         </motion.p>
       </div>
 
-      {/* FORM SIDE */}
       <div className="w-full lg:w-1/2 flex items-center justify-center bg-slate-50 p-8">
         <div className="w-full max-w-md bg-white shadow-2xl rounded-3xl p-10">
           <div className="flex mb-8 bg-slate-100 rounded-xl p-1">
