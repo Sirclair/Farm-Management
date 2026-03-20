@@ -15,13 +15,11 @@ export const UserProvider = ({ children }) => {
     }
 
     try {
-      // FIX: Added "api/" prefix to match your backend routes
+      // Standardized to match your Django URLs
       const res = await api.get("api/my-farm/accounts/me/");
       setUser(res.data);
     } catch (err) {
-      if (err.response?.status !== 401) {
-        console.error("Auth verify error:", err);
-      }
+      if (err.response?.status !== 401) console.error("Verify failed:", err);
       localStorage.removeItem("access");
       setUser(null);
     } finally {
