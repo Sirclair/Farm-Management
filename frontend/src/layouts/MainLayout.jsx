@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Sidebar from "../components/Sidebar";
+import { Menu, ShieldCheck } from "lucide-react";
 
 export default function MainLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
