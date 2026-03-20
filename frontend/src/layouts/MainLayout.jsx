@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import Sidebar from "../components/Sidebar";
-import { Menu, ShieldCheck } from "lucide-react";
+import { ShieldCheck, Menu } from "lucide-react";
 
 export default function MainLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
       <Sidebar 
         isOpen={sidebarOpen} 
         setIsOpen={setSidebarOpen} 
@@ -15,22 +15,18 @@ export default function MainLayout({ children }) {
         setIsCollapsed={setIsCollapsed} 
       />
 
-      {/* Dynamic Margin based on Collapse State */}
-      <div className={`
-        flex-1 flex flex-col overflow-hidden transition-all duration-300
-        ${isCollapsed ? "lg:ml-20" : "lg:ml-60"}
-      `}>
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isCollapsed ? "lg:ml-20" : "lg:ml-60"}`}>
         
-        {/* Mobile Header (Only visible < 1024px) */}
-        <header className="lg:hidden h-16 bg-[#0f172a] text-white flex items-center px-6 justify-between shrink-0">
+        {/* Mobile Header (Hidden on Desktop) */}
+        <header className="lg:hidden h-16 bg-[#0f172a] text-white flex items-center px-6 justify-between shrink-0 z-40">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center"><ShieldCheck size={14}/></div>
-            <span className="font-black italic text-xs uppercase">FarmOS</span>
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <ShieldCheck size={18}/>
+            </div>
+            <span className="font-black italic uppercase tracking-tighter">FarmOS</span>
           </div>
           <button onClick={() => setSidebarOpen(true)} className="p-2 bg-blue-600 rounded-lg">
-            <div className="w-4 h-0.5 bg-white mb-1"></div>
-            <div className="w-4 h-0.5 bg-white mb-1"></div>
-            <div className="w-4 h-0.5 bg-white"></div>
+            <Menu size={20} />
           </button>
         </header>
 
