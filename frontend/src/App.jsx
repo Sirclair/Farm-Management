@@ -35,6 +35,7 @@ function App() {
           <Route path="/iot" element={<ComingSoon />} />
           <Route path="/health" element={<ComingSoon />} />
           <Route path="/marketplace" element={<ComingSoon />} />
+          <Route path="/batches/:id" element={<BatchDetail/>} />
         </Route>
 
         {/* Root Handling */}
