@@ -10,6 +10,7 @@ import Inventory from "./pages/Inventory";
 import Reports from "./pages/Reports";
 import Settings from "./pages/ProfileSettings";
 import ComingSoon from "./pages/ComingSoon";
+import BatchDetail from "./pages/BatchDetail";
 
 import ProtectedRoute from "./ProtectedRoute";
 
