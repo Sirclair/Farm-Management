@@ -1,5 +1,6 @@
 import { useState } from "react";
 import api from "../api/axios";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function LogMortalityModal({ isOpen, onClose, onRefresh, batches }) {
   const [formData, setFormData] = useState({
@@ -8,35 +9,37 @@ export default function LogMortalityModal({ isOpen, onClose, onRefresh, batches 
     feed_used_kg: 0,
     date: new Date().toISOString().split('T')[0]
   });
-  const [loading, setLoading] = useState(false);
+  
+  const [status, setStatus] = useState("idle"); // idle, loading, success, error
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setStatus("loading");
 
     try {
-      // Hits the router-generated endpoint: api/my-farm/flock/daily-records/
+      // FULL PATH based on your config/urls.py
       await api.post("api/my-farm/flock/daily-records/", {
-        ...formData,
         flock: parseInt(formData.flock),
         mortality: parseInt(formData.mortality),
-        feed_used_kg: parseFloat(formData.feed_used_kg)
+        feed_used_kg: parseFloat(formData.feed_used_kg),
+        date: formData.date
       });
       
-      onRefresh();
-      onClose();
-      // Reset form
-      setFormData({ flock: "", mortality: 0, feed_used_kg: 0, date: new Date().toISOString().split('T')[0] });
-    } catch (err) {
-      console.error("Log Error:", err.response);
+      setStatus("success");
       
-      // Displays the specific 'error' message from our Serializer validate method
-      const errorMessage = err.response?.data?.error || 
-                           err.response?.data?.non_field_errors?.[0] || 
-                           "Failed to commit record.";
-      alert(errorMessage);
-    } finally {
-      setLoading(false);
+      // Delay closure so user sees the success state
+      setTimeout(() => {
+        onRefresh();
+        onClose();
+        setStatus("idle");
+        setFormData({ flock: "", mortality: 0, feed_used_kg: 0, date: new Date().toISOString().split('T')[0] });
+      }, 1500);
+
+    } catch (err) {
+      console.error("Sync Error:", err.response);
+      setStatus("error");
+      setErrorMsg(err.response?.data?.error || "Check if record for today already exists.");
     }
   };
 
@@ -44,10 +47,27 @@ export default function LogMortalityModal({ isOpen, onClose, onRefresh, batches 
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[150] flex items-center justify-center p-4">
-      <div className="bg-white rounded-[40px] w-full max-w-lg p-10 shadow-2xl border border-slate-100">
+      <div className="bg-white rounded-[40px] w-full max-w-lg p-10 shadow-2xl border border-slate-100 relative overflow-hidden">
+        
+        {/* Success Overlay */}
+        {status === "success" && (
+          <div className="absolute inset-0 bg-emerald-500 z-10 flex flex-col items-center justify-center text-white animate-in fade-in duration-300">
+            <CheckCircle2 size={60} className="mb-4 animate-bounce" />
+            <h2 className="text-2xl font-black uppercase italic">Record Synced</h2>
+            <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-2">Stock updated successfully</p>
+          </div>
+        )}
+
         <h2 className="text-3xl font-black mb-6 text-slate-900 italic uppercase tracking-tighter">
           Daily <span className="text-rose-600">Logging</span>
         </h2>
+
+        {status === "error" && (
+          <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600">
+            <AlertCircle size={18} />
+            <p className="text-[10px] font-black uppercase">{errorMsg}</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -92,10 +112,10 @@ export default function LogMortalityModal({ isOpen, onClose, onRefresh, batches 
           </div>
 
           <button 
-            disabled={loading}
+            disabled={status === "loading" || status === "success"}
             className="w-full bg-slate-900 text-white p-6 rounded-3xl font-black uppercase tracking-widest hover:bg-rose-600 transition-all mt-4 shadow-xl active:scale-[0.98] disabled:opacity-50"
           >
-            {loading ? "Syncing Database..." : "Commit Daily Record"}
+            {status === "loading" ? "Syncing Logs..." : "Commit Daily Record"}
           </button>
           
           <button 
