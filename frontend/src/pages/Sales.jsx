@@ -8,7 +8,7 @@ export default function Sales() {
 
   const fetchSales = async () => {
     try {
-      const res = await api.get("my-farm/sales/orders/");
+      const res = await api.get("api/my-farm/sales/orders/");
       setSales(res.data.results || res.data || []);
     } catch (err) {
       console.error("Sales fetch error:", err);
