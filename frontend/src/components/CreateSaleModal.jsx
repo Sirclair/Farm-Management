@@ -14,7 +14,7 @@ export default function CreateSaleModal({ isOpen, onClose, onRefresh }) {
 
   useEffect(() => {
     if (isOpen) {
-      api.get("my-farm/flock/batches/").then((res) => {
+      api.get("api/my-farm/flock/batches/").then((res) => {
         const data = res.data.results || res.data || [];
         setBatches(data.filter(b => b.status?.toLowerCase() === "active" && b.current_stock > 0));
       });
