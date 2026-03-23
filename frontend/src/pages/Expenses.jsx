@@ -10,7 +10,7 @@ export default function Expenses() {
 
     const fetchExpenses = async () => {
         try {
-            const res = await api.get("my-farm/finance/expenses/");
+            const res = await api.get("api/my-farm/finance/expenses/");
             setExpenses(res.data.results || res.data || []);
         } catch (error) {
             console.error("Finance error:", error);
