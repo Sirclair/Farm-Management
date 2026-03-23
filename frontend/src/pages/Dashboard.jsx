@@ -1,11 +1,12 @@
 import { useEffect, useState, useContext, useMemo } from "react";
+import { Link } from "react-router-dom"; // Essential for navigation
 import api from "../api/axios";
 import { UserContext } from "../UserContext";
 import MainLayout from "../layouts/MainLayout";
 import LogMortalityModal from "../components/LogMortalityModal";
 import CreateSaleModal from "../components/CreateSaleModal";
 import CreateBatchModal from "../components/CreateBatchModal";
-import { Zap, Droplets, BarChart3, TrendingUp, AlertCircle, Plus } from "lucide-react";
+import { Zap, Droplets, BarChart3, TrendingUp, AlertCircle, Plus, ChevronRight } from "lucide-react";
 
 // --- SUB-COMPONENTS ---
 function StatCard({ title, value, sub, color }) {
@@ -16,7 +17,7 @@ function StatCard({ title, value, sub, color }) {
     rose: "text-rose-600 border-rose-100 bg-rose-50/40" 
   };
   return (
-    <div className={`p-6 rounded-[32px] border shadow-sm transition-all hover:shadow-md ${colorStyles[color] || colorStyles.blue}`}>
+    <div className={`p-6 rounded-[32px] border shadow-sm transition-all hover:scale-[1.02] ${colorStyles[color] || colorStyles.blue}`}>
       <p className="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">{title}</p>
       <div className="text-3xl font-black tracking-tighter italic leading-none">{value}</div>
       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight mt-2 flex items-center gap-1">
@@ -29,7 +30,7 @@ function StatCard({ title, value, sub, color }) {
 function UtilityWidget({ icon, label, status, color }) {
   const bgStyles = { amber: "bg-amber-50 text-amber-600", blue: "bg-blue-50 text-blue-600" };
   return (
-    <div className="bg-white p-6 rounded-[35px] border border-slate-100 flex items-center gap-4 shadow-sm w-full">
+    <div className="bg-white p-6 rounded-[35px] border border-slate-100 flex items-center gap-4 shadow-sm w-full transition-all hover:border-blue-100">
       <div className={`p-4 rounded-2xl ${bgStyles[color] || bgStyles.blue}`}>{icon}</div>
       <div>
         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
@@ -40,21 +41,23 @@ function UtilityWidget({ icon, label, status, color }) {
 }
 
 function InventoryProgressBar({ batch }) {
-  // Logic: width based on surviving birds vs initial quantity
   const widthPercent = Math.max(0, Math.min((batch.current_stock / batch.quantity_received) * 100, 100));
+  
   return (
-    <div className="mb-6 last:mb-0">
-      <div className="flex justify-between text-[10px] font-black mb-2 uppercase tracking-tighter text-slate-400">
-        <span>{batch.name} <span className="text-slate-600 opacity-50">#{batch.batch_number}</span></span>
-        <span className={widthPercent < 20 ? "text-rose-500" : "text-blue-400"}>{batch.current_stock} Birds</span>
+    <Link to={`/batches/${batch.id}`} className="block mb-6 last:mb-0 group cursor-pointer">
+      <div className="flex justify-between text-[10px] font-black mb-2 uppercase tracking-tighter text-slate-400 group-hover:text-blue-400 transition-colors">
+        <span className="flex items-center gap-1">
+            {batch.name} <ChevronRight size={10} className="opacity-0 group-hover:opacity-100 transition-all translate-x-[-5px] group-hover:translate-x-0" />
+        </span>
+        <span className={widthPercent < 20 ? "text-rose-500" : "text-blue-400"}>{batch.current_stock} Units</span>
       </div>
-      <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5">
+      <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5 shadow-inner">
         <div 
-          className={`h-full transition-all duration-1000 ${widthPercent < 20 ? 'bg-rose-500' : 'bg-gradient-to-r from-blue-600 to-blue-400'}`} 
+          className={`h-full transition-all duration-1000 shadow-[0_0_10px_rgba(37,99,235,0.2)] ${widthPercent < 20 ? 'bg-rose-500' : 'bg-gradient-to-r from-blue-600 to-blue-400'}`} 
           style={{ width: `${widthPercent}%` }}
         ></div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -87,9 +90,17 @@ export default function Dashboard() {
         api.get("api/my-farm/inventory/items/"),
       ]);
       const extract = (res) => res.data.results || res.data || [];
-      setData({ batches: extract(batchRes), expenses: extract(expRes), sales: extract(saleRes), inventory: extract(invRes) });
-    } catch (error) { console.error("Dashboard Sync error:", error); } 
-    finally { setLoading(false); }
+      setData({ 
+        batches: extract(batchRes), 
+        expenses: extract(expRes), 
+        sales: extract(saleRes), 
+        inventory: extract(invRes) 
+      });
+    } catch (error) { 
+        console.error("Dashboard Sync error:", error); 
+    } finally { 
+        setLoading(false); 
+    }
   };
 
   useEffect(() => { if (user) fetchData(); }, [user]);
@@ -98,8 +109,6 @@ export default function Dashboard() {
     const currentBirds = data.batches.reduce((acc, b) => acc + (Number(b.current_stock) || 0), 0);
     const totalRev = data.sales.reduce((acc, s) => acc + parseFloat(s.total_amount || 0), 0);
     const totalExp = data.expenses.reduce((acc, e) => acc + parseFloat(e.amount || 0), 0);
-    
-    // Calculate global mortality rate
     const totalInitial = data.batches.reduce((acc, b) => acc + (Number(b.quantity_received) || 0), 0);
     const totalMortality = data.batches.reduce((acc, b) => acc + (Number(b.total_mortality_count) || 0), 0);
     
@@ -140,22 +149,17 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button onClick={() => setIsBatchOpen(true)} className="px-5 py-4 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black text-[10px] uppercase hover:bg-slate-50 flex items-center gap-2 transition-all">
+          <button onClick={() => setIsBatchOpen(true)} className="px-5 py-4 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black text-[10px] uppercase hover:bg-slate-50 flex items-center gap-2 transition-all active:scale-95 shadow-sm">
             <Plus size={14} className="text-blue-600" /> New Batch
           </button>
-          <button onClick={() => setIsSaleOpen(true)} className="px-5 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all">Dispatch Units</button>
-          <button onClick={() => setIsLogOpen(true)} className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase hover:bg-slate-800 transition-all">Daily Log</button>
+          <button onClick={() => setIsSaleOpen(true)} className="px-5 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all active:scale-95">Dispatch Units</button>
+          <button onClick={() => setIsLogOpen(true)} className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/10">Daily Log</button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard title="Live Stock" value={stats.currentBirds.toLocaleString()} sub="Birds in House" color="blue" />
-        <StatCard 
-            title="Mortality" 
-            value={`${stats.mortality}%`} 
-            sub="Health Index" 
-            color={Number(stats.mortality) > 5 ? "rose" : "emerald"} 
-        />
+        <StatCard title="Mortality" value={`${stats.mortality}%`} sub="Health Index" color={Number(stats.mortality) > 5 ? "rose" : "emerald"} />
         <StatCard title="Net Profit" value={`R${stats.profit.toLocaleString()}`} sub="Current Cycle" color={stats.profit >= 0 ? "emerald" : "rose"} />
         <StatCard title="Revenue" value={`R${stats.totalRev.toLocaleString()}`} sub="Total Sales" color="blue" />
       </div>
@@ -177,7 +181,7 @@ export default function Dashboard() {
                         <tr key={i} className="group hover:bg-slate-50 transition-colors">
                             <td className="py-4 font-black text-slate-700 uppercase text-xs">{order.customer_name}</td>
                             <td className="py-4 text-slate-400 text-[10px] font-bold uppercase">{new Date(order.created_at).toLocaleDateString()}</td>
-                            <td className="py-4 font-black text-emerald-600 text-xs text-right">R{parseFloat(order.total_amount).toLocaleString()}</td>
+                            <td className="py-4 font-black text-emerald-600 text-xs text-right italic">R{parseFloat(order.total_amount).toLocaleString()}</td>
                         </tr>
                      )) : (
                         <tr><td className="py-10 text-center text-slate-300 font-bold uppercase text-[10px] italic">No Recent Sales Data</td></tr>
