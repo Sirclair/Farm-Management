@@ -81,14 +81,16 @@ export default function Dashboard() {
   const [isSaleOpen, setIsSaleOpen] = useState(false);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
 
-  const fetchData = async () => {
+const fetchData = async () => {
     try {
+      // FIXED: Ensure leading slashes for all endpoints
       const [batchRes, expRes, saleRes, invRes] = await Promise.all([
-        api.get("api/my-farm/flock/batches/"),
-        api.get("api/my-farm/finance/expenses/"),
-        api.get("api/my-farm/sales/orders/"),
-        api.get("api/my-farm/inventory/items/"),
+        api.get("/api/my-farm/flock/batches/"),
+        api.get("/api/my-farm/finance/expenses/"),
+        api.get("/api/my-farm/sales/orders/"),
+        api.get("/api/my-farm/inventory/items/"),
       ]);
+      
       const extract = (res) => res.data.results || res.data || [];
       setData({ 
         batches: extract(batchRes), 
@@ -102,7 +104,7 @@ export default function Dashboard() {
         setLoading(false); 
     }
   };
-
+  
   useEffect(() => { if (user) fetchData(); }, [user]);
 
   const stats = useMemo(() => {
