@@ -27,7 +27,7 @@ export default function CreateBatchModal({ isOpen, onClose, onRefresh }) {
                 status: formData.status
             };
 
-            await api.post("my-farm/flock/batches/", payload);
+            await api.post("api/my-farm/flock/batches/", payload);
             
             // Trigger Success State
             setSuccess(true);
