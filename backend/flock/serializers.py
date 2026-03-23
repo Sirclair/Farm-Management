@@ -9,13 +9,17 @@ class DailyRecordSerializer(serializers.ModelSerializer):
         fields = ['id', 'flock', 'date', 'mortality', 'feed_used_kg']
 
     def validate(self, data):
-        """
-        Logic: Ensure mortality doesn't exceed the birds currently alive.
-        """
         flock = data['flock']
+        date = data.get('date')
         mortality = data.get('mortality', 0)
-        
-        # We access current_stock directly from the FlockBatch instance
+
+        # 1. Check for Duplicate Daily Records
+        if DailyRecord.objects.filter(flock=flock, date=date).exists():
+            raise serializers.ValidationError({
+                "error": f"A record for {flock.batch_number} already exists for {date}."
+            })
+
+        # 2. Check Mortality vs. Physical Stock
         if mortality > flock.current_stock:
             raise serializers.ValidationError({
                 "error": f"Mortality ({mortality}) cannot exceed current stock ({flock.current_stock})."
@@ -24,7 +28,6 @@ class DailyRecordSerializer(serializers.ModelSerializer):
         return data
 
 class FlockBatchSerializer(serializers.ModelSerializer):
-    # These remain read_only as they are calculated properties in your Model
     total_mortality_count = serializers.IntegerField(read_only=True)
     total_sold_count = serializers.IntegerField(read_only=True)
     mortality_percentage = serializers.FloatField(read_only=True)
