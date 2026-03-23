@@ -4,9 +4,10 @@ import { UserContext } from "../UserContext";
 import MainLayout from "../layouts/MainLayout";
 import LogMortalityModal from "../components/LogMortalityModal";
 import CreateSaleModal from "../components/CreateSaleModal";
-import { Zap, Droplets, BarChart3, TrendingUp, AlertCircle } from "lucide-react";
+import CreateBatchModal from "../components/CreateBatchModal"; // Added Import
+import { Zap, Droplets, BarChart3, TrendingUp, AlertCircle, Plus } from "lucide-react";
 
-// --- SUB-COMPONENTS ---
+// --- SUB-COMPONENTS (StatCard, UtilityWidget, etc. remain the same) ---
 function StatCard({ title, value, sub, color }) {
   const colorStyles = { 
     blue: "text-blue-600 border-blue-50", 
@@ -64,13 +65,15 @@ function CapitalBar({ height, colorClass, label }) {
   );
 }
 
-// --- MAIN DASHBOARD ---
 export default function Dashboard() {
   const { user } = useContext(UserContext);
   const [data, setData] = useState({ batches: [], expenses: [], sales: [], inventory: [] });
   const [loading, setLoading] = useState(true);
+  
+  // Modal States
   const [isLogOpen, setIsLogOpen] = useState(false);
   const [isSaleOpen, setIsSaleOpen] = useState(false);
+  const [isBatchOpen, setIsBatchOpen] = useState(false); // Added Batch State
 
   const fetchData = async () => {
     try {
@@ -110,16 +113,21 @@ export default function Dashboard() {
 
   return (
     <MainLayout>
+      {/* Modals */}
       <LogMortalityModal isOpen={isLogOpen} onClose={() => setIsLogOpen(false)} onRefresh={fetchData} batches={data.batches} />
       <CreateSaleModal isOpen={isSaleOpen} onClose={() => setIsSaleOpen(false)} onRefresh={fetchData} batches={data.batches} />
+      <CreateBatchModal isOpen={isBatchOpen} onClose={() => setIsBatchOpen(false)} onRefresh={fetchData} />
 
       <div className="flex justify-between items-end mb-10">
         <div>
           <h1 className="text-5xl font-black text-slate-900 tracking-tighter italic uppercase leading-none">Command <span className="text-blue-600">Center</span></h1>
-          <p className="text-slate-400 font-bold uppercase text-[10px] mt-2">{user?.farm?.name || "FARM"} • LIVE FEED</p>
+          <p className="text-slate-400 font-bold uppercase text-[10px] mt-2 tracking-widest">{user?.farm?.name || "FARM"} • LIVE FEED</p>
         </div>
         <div className="flex gap-3">
-          <button onClick={() => setIsSaleOpen(true)} className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase hover:bg-blue-700">Dispatch Units</button>
+          <button onClick={() => setIsBatchOpen(true)} className="px-6 py-4 bg-white border-2 border-slate-100 text-slate-900 rounded-2xl font-black text-[10px] uppercase hover:bg-slate-50 flex items-center gap-2">
+            <Plus size={14} /> Initialize Batch
+          </button>
+          <button onClick={() => setIsSaleOpen(true)} className="px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase hover:bg-blue-700 shadow-lg shadow-blue-600/20">Dispatch Units</button>
           <button onClick={() => setIsLogOpen(true)} className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase hover:bg-slate-800">Daily Log</button>
         </div>
       </div>
