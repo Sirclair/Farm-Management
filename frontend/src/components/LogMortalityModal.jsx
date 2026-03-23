@@ -16,7 +16,7 @@ export default function LogMortalityModal({ isOpen, onClose, onRefresh, batches 
 
     try {
       // We send 'flock' as the ID
-      await api.post("my-farm/flock/daily-records/", {
+      await api.post("api/my-farm/flock/daily-records/", {
         ...formData,
         flock: parseInt(formData.flock),
         mortality: parseInt(formData.mortality),
