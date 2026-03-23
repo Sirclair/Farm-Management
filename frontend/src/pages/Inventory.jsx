@@ -15,7 +15,7 @@ export default function Inventory() {
 
     const fetchInventory = async () => {
         try {
-            const res = await api.get("my-farm/inventory/items/");
+            const res = await api.get("api/my-farm/inventory/items/");
             setItems(res.data.results || res.data || []);
         } catch (error) {
             console.error("Inventory error:", error);
