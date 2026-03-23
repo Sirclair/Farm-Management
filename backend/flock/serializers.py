@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from .models import FlockBatch, DailyRecord
-from drf_spectacular.utils import extend_schema_field
 
 class DailyRecordSerializer(serializers.ModelSerializer):
     flock = serializers.PrimaryKeyRelatedField(queryset=FlockBatch.objects.all())
@@ -9,8 +8,23 @@ class DailyRecordSerializer(serializers.ModelSerializer):
         model = DailyRecord
         fields = ['id', 'flock', 'date', 'mortality', 'feed_used_kg']
 
+    def validate(self, data):
+        """
+        Logic: Ensure mortality doesn't exceed the birds currently alive.
+        """
+        flock = data['flock']
+        mortality = data.get('mortality', 0)
+        
+        # We access current_stock directly from the FlockBatch instance
+        if mortality > flock.current_stock:
+            raise serializers.ValidationError({
+                "error": f"Mortality ({mortality}) cannot exceed current stock ({flock.current_stock})."
+            })
+            
+        return data
+
 class FlockBatchSerializer(serializers.ModelSerializer):
-    # Apply the decorator to the field definitions or use SerializerMethodField
+    # These remain read_only as they are calculated properties in your Model
     total_mortality_count = serializers.IntegerField(read_only=True)
     total_sold_count = serializers.IntegerField(read_only=True)
     mortality_percentage = serializers.FloatField(read_only=True)
