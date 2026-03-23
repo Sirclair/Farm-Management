@@ -36,7 +36,7 @@ export default function CreateSaleModal({ isOpen, onClose, onRefresh }) {
     };
 
     try {
-      await api.post("my-farm/sales/orders/", payload);
+      await api.post("api/my-farm/sales/orders/", payload);
       onRefresh();
       onClose();
       setFormData({ customer_name: "", batch_id: "", quantity: 1, price_per_unit: 0, payment_method: "cash" });
