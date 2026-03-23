@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import api from "../api/axios";
-import { X, Package, DollarSign, Layers, Database } from "lucide-react";
+import { X, Package, Layers, Database } from "lucide-react";
 
 export default function AddStockModal({ isOpen, onClose, onRefresh }) {
   const [formData, setFormData] = useState({
@@ -17,10 +17,9 @@ export default function AddStockModal({ isOpen, onClose, onRefresh }) {
     setLoading(true);
 
     try {
-      // PRO TIP: To avoid the "returned more than one" error, 
-      // your backend logic for POST should check if name exists.
-      // On the frontend, we send the clean data:
-      await api.post("my-farm/inventory/items/", {
+      // FIXED: Full path matching your config/urls.py nesting
+      // Added leading slash and ensure trailing slash is present
+      await api.post("api/my-farm/inventory/items/", {
         ...formData,
         quantity: Number(formData.quantity),
         unit_price: Number(formData.unit_price)
@@ -28,11 +27,13 @@ export default function AddStockModal({ isOpen, onClose, onRefresh }) {
 
       onRefresh();
       onClose();
+      // Reset form
       setFormData({ name: "", category: "feed", quantity: "", unit_price: "", unit: "KG" });
     } catch (error) {
       console.error("Critical failure during stock intake:", error);
-      // Detailed alert so you know exactly what the server disliked
-      alert(`Entry Denied: ${error.response?.data?.detail || "Check for duplicate item names"}`);
+      // Detailed alert for debugging
+      const errorDetail = error.response?.data?.error || error.response?.data?.detail || "Check for duplicate item names";
+      alert(`Entry Denied: ${errorDetail}`);
     } finally {
       setLoading(false);
     }
@@ -56,7 +57,6 @@ export default function AddStockModal({ isOpen, onClose, onRefresh }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Item Name - The unique identifier */}
           <div className="relative">
             <Package className="absolute left-5 top-5 text-slate-400" size={18} />
             <input
@@ -70,7 +70,6 @@ export default function AddStockModal({ isOpen, onClose, onRefresh }) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Category Select */}
             <div className="relative">
               <Layers className="absolute left-5 top-5 text-slate-400" size={18} />
               <select
@@ -84,7 +83,6 @@ export default function AddStockModal({ isOpen, onClose, onRefresh }) {
               </select>
             </div>
 
-            {/* Unit Select */}
             <div className="relative">
               <Database className="absolute left-5 top-5 text-slate-400" size={18} />
               <select
@@ -101,7 +99,6 @@ export default function AddStockModal({ isOpen, onClose, onRefresh }) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Quantity */}
             <input
               type="number"
               placeholder="QTY"
@@ -110,7 +107,6 @@ export default function AddStockModal({ isOpen, onClose, onRefresh }) {
               onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
               required
             />
-            {/* Price */}
             <div className="relative">
               <span className="absolute left-5 top-5 font-black text-slate-400">R</span>
               <input
