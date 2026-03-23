@@ -19,8 +19,8 @@ export default function Flocks() {
     try {
 
       const [batchRes, saleRes] = await Promise.all([
-        api.get("my-farm/flock/batches/"),
-        api.get("my-farm/sales/orders/")
+        api.get("api/my-farm/flock/batches/"),
+        api.get("api/my-farm/sales/orders/")
       ]);
 
       setBatches(batchRes.data.results || batchRes.data || []);
