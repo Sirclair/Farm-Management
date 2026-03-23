@@ -1,5 +1,5 @@
 import { useEffect, useState, useContext, useMemo } from "react";
-import { Link } from "react-router-dom"; // Essential for navigation
+import { Link } from "react-router-dom";
 import api from "../api/axios";
 import { UserContext } from "../UserContext";
 import MainLayout from "../layouts/MainLayout";
@@ -42,7 +42,6 @@ function UtilityWidget({ icon, label, status, color }) {
 
 function InventoryProgressBar({ batch }) {
   const widthPercent = Math.max(0, Math.min((batch.current_stock / batch.quantity_received) * 100, 100));
-  
   return (
     <Link to={`/batches/${batch.id}`} className="block mb-6 last:mb-0 group cursor-pointer">
       <div className="flex justify-between text-[10px] font-black mb-2 uppercase tracking-tighter text-slate-400 group-hover:text-blue-400 transition-colors">
@@ -81,9 +80,9 @@ export default function Dashboard() {
   const [isSaleOpen, setIsSaleOpen] = useState(false);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
 
-const fetchData = async () => {
+  const fetchData = async () => {
     try {
-      // FIXED: Ensure leading slashes for all endpoints
+      // FIXED: All endpoints now have leading slashes
       const [batchRes, expRes, saleRes, invRes] = await Promise.all([
         api.get("/api/my-farm/flock/batches/"),
         api.get("/api/my-farm/finance/expenses/"),
@@ -104,7 +103,7 @@ const fetchData = async () => {
         setLoading(false); 
     }
   };
-  
+
   useEffect(() => { if (user) fetchData(); }, [user]);
 
   const stats = useMemo(() => {
@@ -169,8 +168,12 @@ const fetchData = async () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <UtilityWidget icon={<Zap size={20} />} label="Power Grid" status="Stable" color="amber" />
-            <UtilityWidget icon={<Droplets size={20} />} label="Water Supply" status="Optimal" color="blue" />
+            <Link to="/iot" className="w-full">
+                <UtilityWidget icon={<Zap size={20} />} label="Power Grid" status="Stable" color="amber" />
+            </Link>
+            <Link to="/iot" className="w-full">
+                <UtilityWidget icon={<Droplets size={20} />} label="Water Supply" status="Optimal" color="blue" />
+            </Link>
           </div>
           <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm min-h-[350px]">
              <h3 className="font-black text-slate-800 uppercase tracking-widest text-[10px] mb-8 flex items-center gap-2">
@@ -179,7 +182,7 @@ const fetchData = async () => {
              <div className="overflow-x-auto">
                <table className="w-full text-left">
                   <tbody className="divide-y divide-slate-50">
-                     {data.sales.length > 0 ? data.sales.slice(0, 6).map((order, i) => (
+                     {data.sales.length > 0 ? [...data.sales].sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 6).map((order, i) => (
                         <tr key={i} className="group hover:bg-slate-50 transition-colors">
                             <td className="py-4 font-black text-slate-700 uppercase text-xs">{order.customer_name}</td>
                             <td className="py-4 text-slate-400 text-[10px] font-bold uppercase">{new Date(order.created_at).toLocaleDateString()}</td>
