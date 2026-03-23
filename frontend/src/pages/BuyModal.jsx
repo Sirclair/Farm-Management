@@ -8,7 +8,7 @@ export default function BuyModal({ batch, isOpen, onClose, onRefresh }) {
   const handlePurchase = async () => {
     setLoading(true);
     try {
-      await api.post("sales/orders/", {
+      await api.post("api/my-farm/sales/orders/", {
         batch_id: batch.id,
         quantity: qty
       });
