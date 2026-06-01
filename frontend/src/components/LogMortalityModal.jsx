@@ -1,132 +1,270 @@
-import { useState } from "react";
-import api from "../api/axios";
-import { CheckCircle2, AlertCircle } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Skull, Utensils, ClipboardCheck, ArrowLeft } from 'lucide-react';
+import api from '../api/axios';
 
-export default function LogMortalityModal({ isOpen, onClose, onRefresh, batches }) {
+export default function LogMortalityModal({ isOpen, onClose, onRefresh, onSuccess }) {
+  const [view, setView] = useState('hub');
+  const [batches, setBatches] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
   const [formData, setFormData] = useState({
-    flock: "",
-    mortality: 0,
-    feed_used_kg: 0,
-    date: new Date().toISOString().split('T')[0]
+    batch: '',
+    mortality_count: '', // Changed from 0 to empty string for cleaner placeholder UX
+    feed_consumed: '', // Changed from 0 to empty string for cleaner placeholder UX
+    notes: '',
+    date: new Date().toISOString().split('T')[0],
   });
-  
-  const [status, setStatus] = useState("idle"); // idle, loading, success, error
-  const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setStatus("loading");
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchBatches = async () => {
+      setLoading(true);
+      try {
+        const res = await api.get('/api/my-farm/flock/batches/');
+        const list = res.data.results || res.data || [];
+        setBatches(list);
+
+        if (list.length > 0) {
+          setFormData((p) => ({ ...p, batch: list[0].id }));
+        }
+      } catch {
+        setError('SYNC FAILURE: batches unavailable');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBatches();
+
+    return () => {
+      setView('hub');
+      setError('');
+      // CLEAR form on close to avoid carrying numbers across separate views
+      setFormData({
+        batch: '',
+        mortality_count: '',
+        feed_consumed: '',
+        notes: '',
+        date: new Date().toISOString().split('T')[0],
+      });
+    };
+  }, [isOpen]);
+
+  const handleQuickSubmit = async (type) => {
+    setSubmitting(true);
+    setError('');
 
     try {
-      // FULL PATH based on your config/urls.py
-      await api.post("api/my-farm/flock/daily-records/", {
-        flock: parseInt(formData.flock),
-        mortality: parseInt(formData.mortality),
-        feed_used_kg: parseFloat(formData.feed_used_kg),
-        date: formData.date
-      });
-      
-      setStatus("success");
-      
-      // Delay closure so user sees the success state
-      setTimeout(() => {
-        onRefresh();
-        onClose();
-        setStatus("idle");
-        setFormData({ flock: "", mortality: 0, feed_used_kg: 0, date: new Date().toISOString().split('T')[0] });
-      }, 1500);
+      const selectedId = parseInt(formData.batch);
+      const activeBatch = batches.find((b) => b.id === selectedId);
+      const flockId = activeBatch?.flock?.id || activeBatch?.flock || activeBatch?.id;
 
+      if (!flockId) throw new Error('Invalid batch reference');
+
+      // 1. Core structural components
+      const payload = {
+        flock: Number(flockId),
+        date: formData.date,
+        notes: formData.notes?.trim() || '',
+      };
+
+      // 2. STABILIZATION: Parse explicit integers/decimals.
+      // If a specific module view is hidden, pass 'undefined' so Django's partial update (True)
+      // completely ignores it, preserving your existing database data instead of wiping it to 0.
+      if (type === 'mortality') {
+        payload.mortality =
+          formData.mortality_count !== '' ? parseInt(formData.mortality_count, 10) : 0;
+      } else if (type === 'feed') {
+        payload.feed_used_kg =
+          formData.feed_consumed !== '' ? parseFloat(formData.feed_consumed) : 0.0;
+      } else if (type === 'full') {
+        payload.mortality =
+          formData.mortality_count !== '' ? parseInt(formData.mortality_count, 10) : 0;
+        payload.feed_used_kg =
+          formData.feed_consumed !== '' ? parseFloat(formData.feed_consumed) : 0.0;
+      }
+
+      await api.post('/api/my-farm/flock/daily-records/', payload);
+
+      if (typeof onRefresh === 'function') {
+        onRefresh();
+      } else if (typeof onSuccess === 'function') {
+        onSuccess();
+      }
+
+      onClose();
     } catch (err) {
-      console.error("Sync Error:", err.response);
-      setStatus("error");
-      setErrorMsg(err.response?.data?.error || "Check if record for today already exists.");
+      const backendError = err.response?.data
+        ? typeof err.response.data === 'object'
+          ? JSON.stringify(err.response.data)
+          : err.response.data
+        : err.message;
+      setError('SYNC ERROR: ' + backendError);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[150] flex items-center justify-center p-4">
-      <div className="bg-white rounded-[40px] w-full max-w-lg p-10 shadow-2xl border border-slate-100 relative overflow-hidden">
-        
-        {/* Success Overlay */}
-        {status === "success" && (
-          <div className="absolute inset-0 bg-emerald-500 z-10 flex flex-col items-center justify-center text-white animate-in fade-in duration-300">
-            <CheckCircle2 size={60} className="mb-4 animate-bounce" />
-            <h2 className="text-2xl font-black uppercase italic">Record Synced</h2>
-            <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-2">Stock updated successfully</p>
-          </div>
-        )}
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          className="w-full max-w-md rounded-[40px] bg-[#050505] border border-emerald-500/20 shadow-2xl p-8"
+        >
+          {/* HEADER */}
+          <div className="flex items-center justify-between mb-8">
+            {view !== 'hub' ? (
+              <button
+                onClick={() => setView('hub')}
+                className="p-2 rounded-xl hover:bg-white/5 text-zinc-400"
+              >
+                <ArrowLeft size={18} />
+              </button>
+            ) : (
+              <div />
+            )}
 
-        <h2 className="text-3xl font-black mb-6 text-slate-900 italic uppercase tracking-tighter">
-          Daily <span className="text-rose-600">Logging</span>
-        </h2>
+            <h2 className="text-white font-black uppercase tracking-widest text-sm">
+              {view === 'hub' ? 'Daily Ops Core' : `${view.toUpperCase()} MODULE`}
+            </h2>
 
-        {status === "error" && (
-          <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600">
-            <AlertCircle size={18} />
-            <p className="text-[10px] font-black uppercase">{errorMsg}</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block tracking-widest">Select Batch</label>
-            <select 
-              className="w-full bg-slate-50 p-5 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-rose-500 transition-all appearance-none cursor-pointer"
-              value={formData.flock}
-              onChange={(e) => setFormData({...formData, flock: e.target.value})}
-              required
-            >
-              <option value="">Choose Batch...</option>
-              {batches.map(b => (
-                <option key={b.id} value={b.id}>{b.batch_number} - {b.name} ({b.current_stock} left)</option>
-              ))}
-            </select>
+            <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/5 text-zinc-400">
+              <X size={18} />
+            </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block tracking-widest">Mortality</label>
-              <input 
-                type="number"
-                min="0"
-                className="w-full bg-slate-50 p-5 rounded-2xl font-bold outline-none focus:ring-2 ring-rose-500/20"
-                value={formData.mortality}
-                onChange={(e) => setFormData({...formData, mortality: e.target.value})}
-                required
-              />
+          {/* ERROR DISPLAY */}
+          {error && (
+            <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] uppercase font-bold tracking-widest break-words">
+              {error}
             </div>
-            <div>
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-2 block tracking-widest">Feed (KG)</label>
-              <input 
-                type="number"
-                step="0.01"
-                min="0"
-                className="w-full bg-slate-50 p-5 rounded-2xl font-bold outline-none focus:ring-2 ring-blue-500/20"
-                value={formData.feed_used_kg}
-                onChange={(e) => setFormData({...formData, feed_used_kg: e.target.value})}
-                required
-              />
-            </div>
-          </div>
+          )}
 
-          <button 
-            disabled={status === "loading" || status === "success"}
-            className="w-full bg-slate-900 text-white p-6 rounded-3xl font-black uppercase tracking-widest hover:bg-rose-600 transition-all mt-4 shadow-xl active:scale-[0.98] disabled:opacity-50"
-          >
-            {status === "loading" ? "Syncing Logs..." : "Commit Daily Record"}
-          </button>
-          
-          <button 
-            type="button" 
-            onClick={onClose} 
-            className="w-full mt-2 text-[10px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest transition-colors"
-          >
-            Dismiss
-          </button>
-        </form>
+          {/* NAVIGATION HUB */}
+          {view === 'hub' && (
+            <div className="space-y-4">
+              <button
+                onClick={() => setView('mortality')}
+                className="w-full p-6 rounded-[28px] border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 transition flex items-center gap-4"
+              >
+                <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400">
+                  <Skull size={22} />
+                </div>
+                <div className="text-left">
+                  <p className="text-white font-black uppercase text-sm">Mortality Log</p>
+                  <p className="text-zinc-500 text-[10px] uppercase tracking-widest">
+                    Bird loss registry
+                  </p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setView('feed')}
+                className="w-full p-6 rounded-[28px] border border-cyan-500/20 bg-cyan-500/5 hover:bg-cyan-500/10 transition flex items-center gap-4"
+              >
+                <div className="p-3 rounded-2xl bg-cyan-500/10 text-cyan-400">
+                  <Utensils size={22} />
+                </div>
+                <div className="text-left">
+                  <p className="text-white font-black uppercase text-sm">Feed Log</p>
+                  <p className="text-zinc-500 text-[10px] uppercase tracking-widest">
+                    Consumption tracking
+                  </p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setView('full')}
+                className="w-full p-6 rounded-[28px] border border-white/10 bg-white/5 hover:bg-white/10 transition flex items-center gap-4"
+              >
+                <div className="p-3 rounded-2xl bg-white/10 text-white">
+                  <ClipboardCheck size={22} />
+                </div>
+                <div className="text-left">
+                  <p className="text-white font-black uppercase text-sm">Full Report</p>
+                  <p className="text-zinc-500 text-[10px] uppercase tracking-widest">
+                    Complete record
+                  </p>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {/* WORKSPACE AREA */}
+          {view !== 'hub' && (
+            <div className="space-y-6">
+              {/* Batch Selection */}
+              <div>
+                <label className="block text-zinc-500 text-[10px] uppercase tracking-widest mb-2 font-bold pl-2">
+                  Target Flock Batch
+                </label>
+                <select
+                  className="w-full p-4 rounded-2xl bg-black border border-white/10 text-white text-sm font-bold"
+                  value={formData.batch}
+                  onChange={(e) => setFormData({ ...formData, batch: e.target.value })}
+                >
+                  {batches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name ? `${b.name} ` : ''}#{b.batch_number}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Mortality Input */}
+              {(view === 'mortality' || view === 'full') && (
+                <div>
+                  <label className="block text-zinc-500 text-[10px] uppercase tracking-widest mb-2 font-bold pl-2">
+                    Mortality Count
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={formData.mortality_count}
+                    className="w-full p-6 rounded-2xl bg-black border border-red-500/20 text-red-400 font-black text-center text-3xl"
+                    onChange={(e) => setFormData({ ...formData, mortality_count: e.target.value })}
+                  />
+                </div>
+              )}
+
+              {/* Feed Input */}
+              {(view === 'feed' || view === 'full') && (
+                <div>
+                  <label className="block text-zinc-500 text-[10px] uppercase tracking-widest mb-2 font-bold pl-2">
+                    Feed Dispatched (KG)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="0.0"
+                    value={formData.feed_consumed}
+                    className="w-full p-6 rounded-2xl bg-black border border-cyan-500/20 text-cyan-400 font-black text-center text-3xl"
+                    onChange={(e) => setFormData({ ...formData, feed_consumed: e.target.value })}
+                  />
+                </div>
+              )}
+
+              {/* Action Submit */}
+              <button
+                disabled={submitting}
+                onClick={() => handleQuickSubmit(view)}
+                className="w-full py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-widest disabled:opacity-50"
+              >
+                {submitting ? 'SYNCING...' : 'EXECUTE LOG'}
+              </button>
+            </div>
+          )}
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   );
 }

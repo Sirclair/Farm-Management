@@ -1,11 +1,56 @@
 {
-  "python.defaultInterpreterPath": "C:/Users/brigh/farm-managment/backend/venv/Scripts/python.exe",
-  "python.analysis.extraPaths": [
-    "backend",
-    "backend/venv/Lib/site-packages"
-  ],
-  "python.analysis.diagnosticSeverityOverrides": {
-    "reportMissingImports": "none"
+  // 🖥️ Terminal
+  "terminal.integrated.sendKeybindingsToShell": true,
+  "terminal.integrated.commandsToSkipShell": [""],
+  "terminal.integrated.enableMultiLinePasteWarning": "never",
+
+  // 🐍 Python
+  "python.defaultInterpreterPath": "c:\\Users\\brigh\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "diffEditor.ignoreTrimWhitespace": true
   },
-  "git.ignoreLimitWarning": true
+
+  // 💬 Chat & Explorer
+  "chat.viewSessions.orientation": "stacked",
+  "explorer.confirmDelete": false,
+  "explorer.confirmDragAndDrop": false,
+
+  // 📝 Editor
+  "editor.fontSize": 15,
+  "editor.renderWhitespace": "all",
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  // 🎨 Theme
+  "workbench.colorTheme": "Tomorrow Night Blue",
+
+  // 🔄 File Handling
+  "files.autoSave": "onFocusChange",
+
+  // 🔧 Diff Editor
+  "diffEditor.hideUnchangedRegions.enabled": true,
+
+  // 📦 JavaScript / React / TypeScript / JSON / CSS / HTML
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // 📂 JavaScript Imports
+  "javascript.updateImportsOnFileMove.enabled": "always"
 }

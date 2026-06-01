@@ -1,5 +1,5 @@
-import { createContext, useState, useEffect } from "react";
-import api from "./api/axios";
+import { createContext, useState, useEffect } from 'react';
+import api from './api/axios';
 
 export const UserContext = createContext();
 
@@ -8,7 +8,7 @@ export const UserProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const verifyUser = async () => {
-    const token = localStorage.getItem("access");
+    const token = localStorage.getItem('access');
     if (!token) {
       setLoading(false);
       return;
@@ -16,11 +16,11 @@ export const UserProvider = ({ children }) => {
 
     try {
       // Standardized to match your Django URLs
-      const res = await api.get("api/my-farm/accounts/me/");
+      const res = await api.get('/api/my-farm/accounts/me/');
       setUser(res.data);
     } catch (err) {
-      if (err.response?.status !== 401) console.error("Verify failed:", err);
-      localStorage.removeItem("access");
+      if (err.response?.status !== 401) console.error('Verify failed:', err);
+      localStorage.removeItem('access');
       setUser(null);
     } finally {
       setLoading(false);
