@@ -16,7 +16,11 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [
+    "farm-management-8o37.onrender.com",
+    "localhost",
+    "127.0.0.1",
+]
 
 # --------------------------------------------------
 # Installed Apps
@@ -71,12 +75,24 @@ WSGI_APPLICATION = "config.wsgi.application"
 AUTH_USER_MODEL = "accounts.User"
 
 # Change these to your actual live URLs
-FRONTEND_URL = "http://localhost:5173"
-DEFAULT_FROM_EMAIL = "Zonke Farms <noreply@zonkefarms.com>"
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+
 PASSWORD_RESET_TIMEOUT = 259200  # 3 days in seconds
 
 # For testing emails in the console (terminal) instead of sending real ones:
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL",
+    "Zonke Farms <noreply@zonkefarms.com>"
+)
 
 # --------------------------------------------------
 # Database (SQLite fallback for PythonAnywhere)
@@ -176,7 +192,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://farm-management-8o37.onrender.com",
 ]
 
-import os
+
 
 USE_REDIS = os.environ.get("USE_REDIS", "False") == "True"
 
