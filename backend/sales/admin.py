@@ -1,27 +1,194 @@
 from django.contrib import admin
-from .models import Order, OrderItem, Customer
 
-class OrderItemInline(admin.TabularInline):
-    model = OrderItem
-    extra = 1 # Shows one empty row for adding items
-    # Removed readonly_fields so the model can receive the auto-calculated price
+from .models import (
+    Customer,
+    Order,
+    OrderItem,
+    Payment,
+    PendingOrder,
+    PendingOrderItem,
+    PendingOrderFulfillment,
+)
 
-@admin.register(Order)
-class OrderAdmin(admin.ModelAdmin):
-    list_display = ['id', 'get_customer_name', 'farm', 'status', 'total_amount', 'created_at']
-    list_filter = ['status', 'farm', 'created_at']
-    inlines = [OrderItemInline]
 
-    def get_customer_name(self, obj):
-        if obj.user_customer:
-            return f"User: {obj.user_customer.username}"
-        if obj.manual_customer:
-            return f"Manual: {obj.manual_customer.full_name}"
-        return "Walk-in"
-    
-    get_customer_name.short_description = 'Customer'
+# =========================================================
+# CUSTOMER
+# =========================================================
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ['full_name', 'farm', 'email', 'phone_number']
-    search_fields = ['full_name', 'email']
+    list_display = (
+        "id",
+        "full_name",
+        "phone",
+        "email",
+        "created_at",
+    )
+
+    search_fields = (
+        "full_name",
+        "phone",
+        "email",
+    )
+
+
+# =========================================================
+# ORDER ITEM INLINE
+# =========================================================
+
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    extra = 0
+
+
+# =========================================================
+# PAYMENT INLINE
+# =========================================================
+
+class PaymentInline(admin.TabularInline):
+    model = Payment
+    extra = 0
+
+
+# =========================================================
+# ORDER
+# =========================================================
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "id",
+        "customer",
+        "created_at",
+    )
+
+    list_filter = (
+        "created_at",
+    )
+
+    search_fields = (
+        "customer__full_name",
+    )
+
+    inlines = [
+        OrderItemInline,
+        PaymentInline,
+    ]
+
+
+# =========================================================
+# ORDER ITEM
+# =========================================================
+
+@admin.register(OrderItem)
+class OrderItemAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "id",
+        "order",
+        "product",
+        "batch",
+        "quantity",
+        "price_per_unit",
+        "created_at",
+    )
+
+    list_filter = (
+        "created_at",
+    )
+
+
+# =========================================================
+# PAYMENT
+# =========================================================
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "id",
+        "order",
+        "amount",
+        "method",
+        "created_at",
+    )
+
+    list_filter = (
+        "method",
+        "created_at",
+    )
+
+
+# =========================================================
+# PENDING ORDER ITEM INLINE
+# =========================================================
+
+class PendingOrderItemInline(admin.TabularInline):
+    model = PendingOrderItem
+    extra = 0
+
+
+# =========================================================
+# PENDING ORDER
+# =========================================================
+
+@admin.register(PendingOrder)
+class PendingOrderAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "order_number",
+        "customer",
+        "status",
+        "expected_delivery_date",
+        "total_amount",
+        "deposit_paid",
+        "balance_due",
+        "created_at",
+    )
+
+    list_filter = (
+        "status",
+        "created_at",
+    )
+
+    search_fields = (
+        "order_number",
+        "customer__full_name",
+    )
+
+    inlines = [
+        PendingOrderItemInline,
+    ]
+
+
+# =========================================================
+# PENDING ORDER ITEM
+# =========================================================
+
+@admin.register(PendingOrderItem)
+class PendingOrderItemAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "id",
+        "pending_order",
+        "product",
+        "batch",
+        "quantity_ordered",
+        "unit_price",
+    )
+
+
+# =========================================================
+# PENDING ORDER FULFILLMENT
+# =========================================================
+
+@admin.register(PendingOrderFulfillment)
+class PendingOrderFulfillmentAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "id",
+        "pending_order_item",
+        "quantity_delivered",
+        "delivered_at",
+    )

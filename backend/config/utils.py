@@ -1,6 +1,5 @@
-from django.contrib.contenttypes.models import ContentType
-from django.utils import timezone
-from .models import ActivityLog # We will create this in a 'logs' app or 'accounts'
+from .models import ActivityLog  # We will create this in a 'logs' app or 'accounts'
+
 
 def log_action(user, instance, action_type):
     # action_type could be 'CREATE', 'UPDATE', or 'DELETE'

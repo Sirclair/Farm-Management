@@ -1,11 +1,19 @@
-from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import FlockBatchViewSet, DailyRecordViewSet
+
+from .views import (
+    FlockBatchViewSet,
+    DailyRecordViewSet,
+    StockAdjustmentViewSet,
+)
 
 router = DefaultRouter()
-router.register(r'batches', FlockBatchViewSet, basename='flockbatch')
-router.register(r'daily-records', DailyRecordViewSet, basename='dailyrecord')
 
-urlpatterns = [
-    path('', include(router.urls)),
-]
+router.register(r"batches", FlockBatchViewSet, basename="batches")
+router.register(r"daily-records", DailyRecordViewSet, basename="daily-records")
+router.register(
+    r"stock-adjustments",
+    StockAdjustmentViewSet,
+    basename="stock-adjustments"
+)
+
+urlpatterns = router.urls

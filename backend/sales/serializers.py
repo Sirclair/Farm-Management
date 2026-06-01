@@ -1,61 +1,189 @@
+from django.db.models import Sum
 from rest_framework import serializers
-from .models import Order, OrderItem, Customer
-from drf_spectacular.utils import extend_schema_field
+from decimal import Decimal
+from .models import (
+    Customer,
+    Order,
+    OrderItem,
+    Payment,
+    PendingOrder,
+    PendingOrderItem,
+)
 
-
+# =========================================================
+# CUSTOMER
+# =========================================================
 class CustomerSerializer(serializers.ModelSerializer):
+    total_debt = serializers.SerializerMethodField()
 
     class Meta:
         model = Customer
-        fields = "__all__"
+        fields = [
+            "id",
+            "full_name",
+            "phone",
+            "email",
+            "address",
+            "total_debt",
+            "created_at",
+        ]
+        read_only_fields = ["id", "total_debt", "created_at"]
+
+    def get_total_debt(self, obj):
+        agg = Order.objects.filter(customer=obj).aggregate(
+            total=Sum("subtotal"),
+            paid=Sum("total_paid"),
+        )
+        total = agg["total"] or Decimal("0.00")
+        paid = agg["paid"] or Decimal("0.00")
+        return max(Decimal("0.00"), total - paid)
 
 
+# =========================================================
+# ORDER ITEM
+# =========================================================
 class OrderItemSerializer(serializers.ModelSerializer):
-
-    batch_name = serializers.ReadOnlyField(source="batch.name")
+    product_name = serializers.ReadOnlyField(source="product.name")
+    line_total = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
         fields = [
             "id",
+            "product",
+            "product_name",
             "batch",
-            "batch_name",
             "quantity",
-            "price_at_sale",
+            "price_per_unit",
+            "cost_per_unit",
+            "line_total",
         ]
 
+    def get_line_total(self, obj):
+        return obj.quantity * obj.price_per_unit
 
+
+# =========================================================
+# PAYMENT
+# =========================================================
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = "__all__"
+
+
+# =========================================================
+# ORDER
+# =========================================================
 class OrderSerializer(serializers.ModelSerializer):
-
     items = OrderItemSerializer(many=True, read_only=True)
-
-    customer_name = serializers.SerializerMethodField()
+    payments = PaymentSerializer(many=True, read_only=True)
+    customer_name = serializers.ReadOnlyField(source="customer.full_name")
+    balance = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
+        fields = [
+            "id",
+            "customer",
+            "customer_name",
+            "order_number",
+            "subtotal",
+            "total_paid",
+            "balance_due",
+            "balance",
+            "payment_status",
+            "notes",
+            "created_at",
+            "items",
+            "payments",
+        ]
 
+    def get_balance(self, obj):
+        return max(Decimal("0.00"), obj.subtotal - obj.total_paid)
+
+
+# =========================================================
+# PENDING ORDER ITEM
+# =========================================================
+class PendingOrderItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.ReadOnlyField(source="product.name")
+    quantity_remaining = serializers.ReadOnlyField()
+    line_total = serializers.ReadOnlyField()
+
+    class Meta:
+        model = PendingOrderItem
+        fields = [
+            "id",
+            "product",
+            "product_name",
+            "batch",
+            "quantity_ordered",
+            "quantity_fulfilled",
+            "quantity_remaining",
+            "unit_price",
+            "line_total",
+        ]
+
+
+# =========================================================
+# PENDING ORDER
+# =========================================================
+class PendingOrderSerializer(serializers.ModelSerializer):
+    items = PendingOrderItemSerializer(many=True, required=False)
+    customer_name = serializers.ReadOnlyField(source="customer.full_name")
+
+    total_amount = serializers.SerializerMethodField()
+    balance_due = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PendingOrder
         fields = [
             "id",
             "farm",
-            "user_customer",
-            "manual_customer",
+            "customer",
             "customer_name",
+            "order_number",
             "status",
-            "payment_method",
+            "expected_delivery_date",
+            "delivery_time",
+            "delivery_address",
+            "notes",
+            "deposit_paid",
             "total_amount",
+            "balance_due",
             "items",
             "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "farm",
+            "order_number",
+            "created_at",
+            "updated_at",
         ]
 
-        read_only_fields = ["total_amount", "farm"]
+    def get_total_amount(self, obj):
+        return obj.total_amount
 
-    @extend_schema_field(serializers.CharField())
-    def get_customer_name(self, obj):
+    def get_balance_due(self, obj):
+        return obj.balance_due
 
-        if obj.user_customer:
-            return obj.user_customer.get_full_name() or obj.user_customer.username
+    def create(self, validated_data):
+        """
+        Custom handling for nested writable fields layout payload.
+        Separates child lines from header transaction variables before committing records.
+        """
+        # 1. Pop out child items structure safely
+        items_data = validated_data.pop("items", [])
 
-        if obj.manual_customer:
-            return obj.manual_customer.full_name
+        # 2. Create core document tracking row.
+        # 'farm' is extracted out of validated_data automatically since your 
+        # view passes it directly inside serializer.save(farm=self.request.user.active_farm)
+        pending_order = PendingOrder.objects.create(**validated_data)
 
-        return "Walk-in"
+        # 3. Map, iterate and register tracking data inside child operational ledger tables
+        for item_data in items_data:
+            PendingOrderItem.objects.create(pending_order=pending_order, **item_data)
+
+        return pending_order

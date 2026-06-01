@@ -1,4 +1,5 @@
-from datetime import date, timedelta
+from datetime import date
+
 from flock.models import DailyRecord, FlockBatch
 
 
@@ -15,8 +16,7 @@ def mortality_alerts(farm):
     for batch in batches:
 
         today_record = DailyRecord.objects.filter(
-            flock=batch,
-            date=date.today()
+            flock=batch, date=date.today()
         ).first()
 
         if not today_record:
@@ -28,12 +28,14 @@ def mortality_alerts(farm):
         mortality_rate = (today_record.mortality / batch.current_stock) * 100
 
         if mortality_rate >= 3:
-            alerts.append({
-                "type": "mortality",
-                "batch": batch.batch_number,
-                "message": f"High mortality detected in {batch.batch_number}",
-                "mortality_rate": round(mortality_rate, 2)
-            })
+            alerts.append(
+                {
+                    "type": "mortality",
+                    "batch": batch.batch_number,
+                    "message": f"High mortality detected in {batch.batch_number}",
+                    "mortality_rate": round(mortality_rate, 2),
+                }
+            )
 
     return alerts
 
@@ -55,12 +57,14 @@ def feed_efficiency_alerts(farm):
             continue
 
         if fcr > 2.0:
-            alerts.append({
-                "type": "feed",
-                "batch": batch.batch_number,
-                "message": f"Poor feed efficiency detected in {batch.batch_number}",
-                "fcr": fcr
-            })
+            alerts.append(
+                {
+                    "type": "feed",
+                    "batch": batch.batch_number,
+                    "message": f"Poor feed efficiency detected in {batch.batch_number}",
+                    "fcr": fcr,
+                }
+            )
 
     return alerts
 

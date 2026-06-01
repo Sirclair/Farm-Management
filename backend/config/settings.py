@@ -1,6 +1,7 @@
 import os
-from pathlib import Path
 from datetime import timedelta
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 # --------------------------------------------------
@@ -15,7 +16,7 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ["*"]
 
 # --------------------------------------------------
 # Installed Apps
@@ -29,7 +30,7 @@ INSTALLED_APPS = [
     "dashboard",
     "products",
     "inventory",
-
+    "ai",
     # Django core
     "django.contrib.admin",
     "django.contrib.auth",
@@ -38,7 +39,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
-
     # Third-party
     "rest_framework",
     "rest_framework.authtoken",
@@ -70,6 +70,14 @@ ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 AUTH_USER_MODEL = "accounts.User"
 
+# Change these to your actual live URLs
+FRONTEND_URL = "http://localhost:5173"
+DEFAULT_FROM_EMAIL = "Zonke Farms <noreply@zonkefarms.com>"
+PASSWORD_RESET_TIMEOUT = 259200  # 3 days in seconds
+
+# For testing emails in the console (terminal) instead of sending real ones:
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
 # --------------------------------------------------
 # Database (SQLite fallback for PythonAnywhere)
 # --------------------------------------------------
@@ -77,6 +85,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
     import dj_database_url
+
     DATABASES = {
         "default": dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
     }
@@ -114,12 +123,8 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",
-    ),
-    "DEFAULT_FILTER_BACKENDS": (
-        "django_filters.rest_framework.DjangoFilterBackend",
-    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
@@ -139,7 +144,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # --------------------------------------------------
 # CORS / CSRF for React frontend
@@ -158,10 +163,33 @@ CORS_ALLOW_HEADERS = [
 CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 
 CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",  # Add this for local development
+    "http://127.0.0.1:5173",  # Add this for local development
     "https://farm-management-omega-ten.vercel.app",
     "https://clair.pythonanywhere.com",
-    "https://farm-management-8o37.onrender.com"
+    "https://farm-management-8o37.onrender.com",
 ]
+
+import os
+
+USE_REDIS = os.environ.get("USE_REDIS", "False") == "True"
+
+if USE_REDIS:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": "redis://127.0.0.1:6379/1",
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
 
 # --------------------------------------------------
 # Production Security

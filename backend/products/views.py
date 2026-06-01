@@ -1,22 +1,69 @@
-from rest_framework import generics, permissions, filters
-from django_filters.rest_framework import DjangoFilterBackend
-from .models import Product
-from .serializers import ProductSerializer
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
 
-class GlobalMarketplaceListView(generics.ListAPIView):
-    """
-    Worldwide Public API: Anyone can search and browse.
-    """
-    queryset = Product.objects.filter(is_available=True, stock_quantity__gt=0)
+from .models import Product, ProductCategory, InventoryItem
+from .serializers import (
+    ProductSerializer,
+    ProductCategorySerializer,
+    InventoryItemSerializer,
+)
+
+
+# =====================================================
+# PRODUCT CATEGORY
+# =====================================================
+
+class ProductCategoryViewSet(viewsets.ModelViewSet):
+    serializer_class = ProductCategorySerializer
+    permission_classes = [IsAuthenticated]
+
+    queryset = ProductCategory.objects.all()
+
+
+# =====================================================
+# PRODUCTS
+# =====================================================
+
+class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
-    permission_classes = [permissions.AllowAny] # No login required
-    
-    # World-class search & filter capabilities
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category', 'farm__country', 'farm__currency_code']
-    search_fields = ['name', 'description', 'farm__name']
-    ordering_fields = ['price', 'created_at']
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Optional: Only show products from farms with active subscriptions
-        return super().get_queryset().filter(farm__is_active_subscription=True)
+
+        print("USER:", self.request.user)
+
+        print("ACTIVE FARM:", self.request.user.active_farm)
+
+        farm = self.request.user.active_farm
+
+        if not farm:
+            return Product.objects.none()
+
+        return Product.objects.filter(
+            farm=farm
+        ).select_related("category")
+
+    def perform_create(self, serializer):
+        serializer.save(
+            farm=self.request.user.active_farm
+        )
+
+
+# =====================================================
+# INVENTORY
+# =====================================================
+
+class InventoryViewSet(viewsets.ModelViewSet):
+    serializer_class = InventoryItemSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        farm = self.request.user.active_farm
+
+        if not farm:
+            return InventoryItem.objects.none()
+
+        return InventoryItem.objects.filter(farm=farm)
+
+    def perform_create(self, serializer):
+        serializer.save(farm=self.request.user.active_farm)

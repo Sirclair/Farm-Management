@@ -1,61 +1,87 @@
-from django.db import models
+import random
+from datetime import timedelta
+
+import pytz
 from django.contrib.auth.models import AbstractUser
-import pytz 
+from django.db import models
+from django.utils import timezone
+
 
 class Farm(models.Model):
-    name = models.CharField(max_length=255, unique=True) # Unique prevents duplicates like two "Zonke Farms"
+    name = models.CharField(max_length=255, unique=True)
     owner_name = models.CharField(max_length=255)
     email = models.EmailField()
-    phone = models.CharField(max_length=20)
-    address = models.TextField()
+    phone = models.CharField(max_length=20, blank=True)
+    address = models.TextField(blank=True)
+
     country = models.CharField(max_length=100, default="South Africa")
     currency_code = models.CharField(max_length=3, default="ZAR")
+
     timezone = models.CharField(
-        max_length=32, 
-        choices=[(tz, tz) for tz in pytz.all_timezones], 
-        default='Africa/Johannesburg'
+        max_length=32,
+        choices=[(tz, tz) for tz in pytz.all_timezones],
+        default="Africa/Johannesburg",
     )
+
     is_active_subscription = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.name} ({self.country})"
+        return self.name
+
 
 class User(AbstractUser):
     ROLE_CHOICES = (
-        ('admin', 'Global Platform Admin'), # You, the software creator
-        ('owner', 'Farm Owner'),
-        ('manager', 'Farm Manager'),
-        ('staff', 'Farm Staff'),
-        ('customer', 'Marketplace Customer'), # Buys from farms
+        ("admin", "Global Platform Admin"),
+        ("owner", "Farm Owner"),
+        ("manager", "Farm Manager"),
+        ("staff", "Farm Staff"),
+        ("customer", "Marketplace Customer"),
     )
-    # This is their global identity on your platform
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='customer')
+
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="customer")
+
+    is_verified = models.BooleanField(default=False)
+    otp_code = models.CharField(max_length=6, blank=True, null=True)
+    otp_expiry = models.DateTimeField(blank=True, null=True)
+
+    def generate_otp(self):
+        self.otp_code = str(random.randint(100000, 999999))
+        self.otp_expiry = timezone.now() + timedelta(minutes=10)
+        self.save(update_fields=["otp_code", "otp_expiry"])
+        return self.otp_code
 
     @property
     def active_farm(self):
-        """Helper to get the user's primary farm data."""
-        membership = self.farm_memberships.select_related('farm').first()
+        membership = (
+            self.farm_memberships.select_related("farm").order_by("-joined_at").first()
+        )
         return membership.farm if membership else None
-        
+
     @property
     def farm_role(self):
-        """Helper to get the specific role they play in their active farm."""
         membership = self.farm_memberships.first()
         return membership.role if membership else self.role
+
+    @property
+    def is_fully_active(self):
+        if not self.is_verified:
+            return False
+        if self.role == "owner" and not self.active_farm:
+            return False
+        return True
 
     def __str__(self):
         return self.username
 
+
 class FarmMembership(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="farm_memberships")
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="farm_memberships"
+    )
     farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name="memberships")
-    # Their role specific to THIS farm
     role = models.CharField(max_length=20, choices=User.ROLE_CHOICES)
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'farm')
-
-    def __str__(self):
-        return f"{self.user.username} - {self.role} at {self.farm.name}"
+        unique_together = ("user", "farm")

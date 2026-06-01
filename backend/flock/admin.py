@@ -8,11 +8,11 @@ class FlockBatchAdmin(admin.ModelAdmin):
         "batch_number",
         "name",
         "quantity_received",
-        "current_stock",
         "status",
         "farm",
     ]
     search_fields = ["batch_number", "name"]
+    ordering = ["-id"]
 
 
 @admin.register(DailyRecord)

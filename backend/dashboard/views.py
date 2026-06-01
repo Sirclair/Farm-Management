@@ -1,13 +1,14 @@
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.decorators import api_view
 from django.db.models import Sum
 from drf_spectacular.utils import extend_schema
+from rest_framework.decorators import api_view
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from accounts.models import FarmMembership
+from finance.models import Expense, Income
 from flock.models import FlockBatch
-from finance.models import Income, Expense
+
 
 @extend_schema(responses={200: dict})
 class FarmDashboardView(APIView):
@@ -24,13 +25,16 @@ class FarmDashboardView(APIView):
 
         farm = membership.farm
 
-        birds = FlockBatch.objects.filter(farm=farm).aggregate(
-            total=Sum("current_stock")
-        )["total"] or 0
+        batches = FlockBatch.objects.filter(farm=farm)
 
-        total_received = FlockBatch.objects.filter(farm=farm).aggregate(
-            total=Sum("quantity_received")
-        )["total"] or 0
+        birds = sum(batch.current_stock for batch in batches)
+
+        total_received = (
+            FlockBatch.objects.filter(farm=farm).aggregate(
+                total=Sum("quantity_received")
+            )["total"]
+            or 0
+        )
 
         total_mortality = sum(
             batch.total_mortality_count
@@ -41,27 +45,30 @@ class FarmDashboardView(APIView):
         if total_received > 0:
             mortality_rate = round((total_mortality / total_received) * 100, 2)
 
-        income = Income.objects.filter(farm=farm).aggregate(
-            total=Sum("amount")
-        )["total"] or 0
+        income = (
+            Income.objects.filter(farm=farm).aggregate(total=Sum("amount"))["total"]
+            or 0
+        )
 
-        expenses = Expense.objects.filter(farm=farm).aggregate(
-            total=Sum("amount")
-        )["total"] or 0
+        expenses = (
+            Expense.objects.filter(farm=farm).aggregate(total=Sum("amount"))["total"]
+            or 0
+        )
 
         profit = income - expenses
 
-        return Response({
-            "birds_in_stock": birds,
-            "mortality_rate": mortality_rate,
-            "total_income": income,
-            "total_expenses": expenses,
-            "profit": profit
-        })
+        return Response(
+            {
+                "birds_in_stock": birds,
+                "mortality_rate": mortality_rate,
+                "total_income": income,
+                "total_expenses": expenses,
+                "profit": profit,
+            }
+        )
+
 
 @extend_schema(responses={200: dict})
-@api_view(['GET'])
+@api_view(["GET"])
 def farm_kpis(request):
-    return Response({
-        "message": "Farm KPIs endpoint - define metrics here later"
-    })
+    return Response({"message": "Farm KPIs endpoint - define metrics here later"})
