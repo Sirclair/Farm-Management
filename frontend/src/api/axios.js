@@ -64,7 +64,7 @@ api.interceptors.response.use(
 
         // Using a clean axios instance to prevent interceptor loops,
         // combined with a cleanly formatted URL string
-        const res = await axios.post(`${BASE_URL}/api/token/refresh/`, {
+        const res = await axios.post(`${BASE_URL}/api/refresh/`, {
           refresh: refreshToken,
         });
 
