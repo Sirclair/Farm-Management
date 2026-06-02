@@ -186,7 +186,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://farm-management-tawny-nine.vercel.app",
 ]
 
-CORS_ALLOW_CREDENTIALS = True
+#CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
     "accept",
