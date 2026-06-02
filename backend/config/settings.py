@@ -181,6 +181,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 # CORS (FIXED FOR PREFLIGHT + VERCEL)
 # --------------------------------------------------
 
+# --------------------------------------------------
+# CORS (FIXED FOR PREFLIGHT + VERCEL)
+# --------------------------------------------------
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -188,7 +192,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://farm-management-tawny-nine.vercel.app",
 ]
 
-#CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
     "accept",
