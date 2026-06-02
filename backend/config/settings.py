@@ -18,8 +18,10 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
 # IMPORTANT: Render requires .onrender.com wildcard
+# IMPORTANT: Render requires .onrender.com wildcard
 ALLOWED_HOSTS = [
     "farm-management-8o37.onrender.com",
+    "farm-management-tawny-nine.vercel.app",  # 👈 ADD THIS HERE
     ".onrender.com",
     "localhost",
     "127.0.0.1",
