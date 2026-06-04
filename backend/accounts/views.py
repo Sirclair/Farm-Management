@@ -1,6 +1,6 @@
-from django.conf import settings
+#from django.conf import settings
 from django.contrib.auth import update_session_auth_hash
-from django.core.mail import send_mail
+#from django.core.mail import send_mail
 from django.utils import timezone
 
 from accounts.utils import get_user_farm
@@ -59,19 +59,6 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = FarmRegistrationSerializer
     permission_classes = [AllowAny]
-
-    def perform_create(self, serializer):
-        user = serializer.save()
-
-        otp = user.generate_otp()
-
-        send_mail(
-            subject="Zonke Farms Verification Code",
-            message=f"Your verification code is {otp}",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=False,
-        )
         
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
