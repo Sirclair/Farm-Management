@@ -20,9 +20,8 @@ DEBUG = os.getenv("DEBUG", "True") == "True"
 # IMPORTANT: Render requires .onrender.com wildcard
 # IMPORTANT: Render requires .onrender.com wildcard
 ALLOWED_HOSTS = [
-    "farm-management-8o37.onrender.com",
-    "farm-management-tawny-nine.vercel.app",  # 👈 ADD THIS HERE
     ".onrender.com",
+    ".vercel.app",
     "localhost",
     "127.0.0.1",
 ]
@@ -181,17 +180,20 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 # CORS (FIXED FOR PREFLIGHT + VERCEL)
 # --------------------------------------------------
 
-# --------------------------------------------------
-# CORS (FIXED FOR PREFLIGHT + VERCEL)
-# --------------------------------------------------
 
-CSRF_TRUSTED_ORIGINS = [
+CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://farm-management-bice.vercel.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://farm-management-bice.vercel.app",
+]
 
 #CORS_ALLOW_HEADERS = [
     #"accept",
@@ -211,11 +213,7 @@ CORS_ALLOW_METHODS = [
     "OPTIONS",
 ]
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://farm-management-bice.vercel.app",
-]
+
 
 # --------------------------------------------------
 # CACHE
