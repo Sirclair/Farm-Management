@@ -62,16 +62,14 @@ class RegisterView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         user = serializer.save()
-        otp = user.generate_otp()
 
-        send_mail(
-            "Zonke Farms OTP",
-            f"Code: {otp}",
-            settings.DEFAULT_FROM_EMAIL,
-            [user.email],
-        )
+        print("USER CREATED:", user.username)
 
+        user.generate_otp()
 
+        print("OTP GENERATED:", user.otp_code)
+        
+        
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
 def current_user(request):
