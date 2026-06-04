@@ -73,8 +73,11 @@ class RegisterView(generics.CreateAPIView):
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
 def current_user(request):
-    return Response(UserProfileSerializer(request.user).data)
-
+    return Response({
+        "id": request.user.id,
+        "username": request.user.username,
+        "email": request.user.email,
+    })
 
 # ---------------- FARMS ----------------
 
