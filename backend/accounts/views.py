@@ -63,12 +63,15 @@ class RegisterView(generics.CreateAPIView):
     def perform_create(self, serializer):
         user = serializer.save()
 
-        print("USER CREATED:", user.username)
+        otp = user.generate_otp()
 
-        user.generate_otp()
-
-        print("OTP GENERATED:", user.otp_code)
-        
+        send_mail(
+            subject="Zonke Farms Verification Code",
+            message=f"Your verification code is {otp}",
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
         
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
