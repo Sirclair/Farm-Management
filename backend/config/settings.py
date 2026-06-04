@@ -185,23 +185,22 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 # CORS (FIXED FOR PREFLIGHT + VERCEL)
 # --------------------------------------------------
 
-CORS_ALLOWED_ORIGINS = [
+CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://farm-management-omega-ten.vercel.app",
-    "https://farm-management-tawny-nine.vercel.app",
+    "https://farm-management-bice.vercel.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOW_HEADERS = [
-    "accept",
-    "authorization",
-    "content-type",
-    "origin",
-    "x-csrftoken",
-    "x-requested-with",
-]
+#CORS_ALLOW_HEADERS = [
+    #"accept",
+    #"authorization",
+    #"content-type",
+    #"origin",
+    #"x-csrftoken",
+    #"x-requested-with",
+#]
 
 CORS_ALLOW_METHODS = [
     "GET",
@@ -215,10 +214,7 @@ CORS_ALLOW_METHODS = [
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://farm-management-omega-ten.vercel.app",
-    "https://farm-management-8o37.onrender.com",
-    "https://farm-management-tawny-nine.vercel.app",
-    
+    "https://farm-management-bice.vercel.app",
 ]
 
 # --------------------------------------------------
