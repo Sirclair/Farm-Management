@@ -40,8 +40,8 @@ class User(AbstractUser):
     )
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="customer")
-
     is_verified = models.BooleanField(default=False)
+
     otp_code = models.CharField(max_length=6, blank=True, null=True)
     otp_expiry = models.DateTimeField(blank=True, null=True)
 
@@ -51,35 +51,20 @@ class User(AbstractUser):
         self.save(update_fields=["otp_code", "otp_expiry"])
         return self.otp_code
 
-    @property
-    def active_farm(self):
-        membership = (
-            self.farm_memberships.select_related("farm").order_by("-joined_at").first()
-        )
-        return membership.farm if membership else None
-
-    @property
-    def farm_role(self):
-        membership = self.farm_memberships.first()
-        return membership.role if membership else self.role
-
-    @property
-    def is_fully_active(self):
-        if not self.is_verified:
-            return False
-        if self.role == "owner" and not self.active_farm:
-            return False
-        return True
-
     def __str__(self):
         return self.username
+
+    # ❌ REMOVED: active_farm (this was your production bug source)
+    # Farm must always be resolved via FarmMembership explicitly
 
 
 class FarmMembership(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="farm_memberships"
     )
-    farm = models.ForeignKey(Farm, on_delete=models.CASCADE, related_name="memberships")
+    farm = models.ForeignKey(
+        Farm, on_delete=models.CASCADE, related_name="memberships"
+    )
     role = models.CharField(max_length=20, choices=User.ROLE_CHOICES)
     joined_at = models.DateTimeField(auto_now_add=True)
 

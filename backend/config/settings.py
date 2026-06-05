@@ -4,31 +4,30 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# --------------------------------------------------
-# Base Setup
-# --------------------------------------------------
+# =========================================================
+# BASE SETUP
+# =========================================================
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv()
 
-# --------------------------------------------------
-# Security & Environment
-# --------------------------------------------------
+# =========================================================
+# SECURITY
+# =========================================================
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me")
 
-DEBUG = os.getenv("DEBUG", "True") == "True"
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
-# IMPORTANT: Render requires .onrender.com wildcard
-# IMPORTANT: Render requires .onrender.com wildcard
 ALLOWED_HOSTS = [
     ".onrender.com",
+    "farm-management-ydg3.onrender.com",
     ".vercel.app",
     "localhost",
     "127.0.0.1",
 ]
 
-# --------------------------------------------------
-# Installed Apps
-# --------------------------------------------------
+# =========================================================
+# APPLICATIONS
+# =========================================================
 INSTALLED_APPS = [
     # Django core
     "django.contrib.admin",
@@ -58,11 +57,12 @@ INSTALLED_APPS = [
     "ai",
 ]
 
-# --------------------------------------------------
-# Middleware
-# --------------------------------------------------
+# =========================================================
+# MIDDLEWARE (ORDER IS CRITICAL)
+# =========================================================
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",  # MUST be first
+    "corsheaders.middleware.CorsMiddleware",
+
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
 
@@ -77,22 +77,20 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
+
 AUTH_USER_MODEL = "accounts.User"
 
-# --------------------------------------------------
-# Frontend
-# --------------------------------------------------
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+# =========================================================
+# FRONTEND
+# =========================================================
+FRONTEND_URL = os.getenv(
+    "FRONTEND_URL",
+    "http://localhost:5173"
+)
 
-# --------------------------------------------------
-# EMAIL (GMAIL SMTP)
-# --------------------------------------------------
-#EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-
-#
-# --------------------------------------------------
-# Database
-# --------------------------------------------------
+# =========================================================
+# DATABASE
+# =========================================================
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
@@ -101,7 +99,8 @@ if DATABASE_URL:
     DATABASES = {
         "default": dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=600
+            conn_max_age=600,
+            ssl_require=True,
         )
     }
 else:
@@ -112,9 +111,9 @@ else:
         }
     }
 
-# --------------------------------------------------
-# Templates
-# --------------------------------------------------
+# =========================================================
+# TEMPLATES
+# =========================================================
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -131,9 +130,9 @@ TEMPLATES = [
     },
 ]
 
-# --------------------------------------------------
+# =========================================================
 # REST FRAMEWORK
-# --------------------------------------------------
+# =========================================================
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -147,45 +146,40 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
+# =========================================================
+# JWT CONFIG
+# =========================================================
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
+
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# --------------------------------------------------
-# STATIC / MEDIA
-# --------------------------------------------------
+# =========================================================
+# STATIC & MEDIA
+# =========================================================
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_ROOT = BASE_DIR / "media"
 
-# --------------------------------------------------
-# --------------------------------------------------
-# CORS
-# --------------------------------------------------
-
+# =========================================================
+# CORS (CRITICAL FOR VERCEL)
+# =========================================================
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-]
-
-CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^https://.*\.vercel\.app$",
+    "https://farm-management-pi.vercel.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
-
-CSRF_TRUSTED_ORIGINS = [
-    "https://*.vercel.app",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
 
 CORS_ALLOW_METHODS = [
     "GET",
@@ -196,9 +190,51 @@ CORS_ALLOW_METHODS = [
     "OPTIONS",
 ]
 
-# --------------------------------------------------
-# CACHE
-# --------------------------------------------------
+# =========================================================
+# CSRF
+# =========================================================
+CSRF_TRUSTED_ORIGINS = [
+    "https://farm-management-pi.vercel.app",
+    "http://localhost:5173",
+]
+
+# =========================================================
+# PROXY (RENDER FIX)
+# =========================================================
+USE_X_FORWARDED_HOST = True
+
+SECURE_PROXY_SSL_HEADER = (
+    "HTTP_X_FORWARDED_PROTO",
+    "https",
+)
+
+# =========================================================
+# SECURITY SETTINGS (PRODUCTION ONLY)
+# =========================================================
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+# =========================================================
+# INTERNATIONALIZATION
+# =========================================================
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "UTC"
+
+USE_I18N = True
+USE_TZ = True
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# =========================================================
+# CACHE (SAFE DEFAULT)
+# =========================================================
 USE_REDIS = os.environ.get("USE_REDIS", "False") == "True"
 
 if USE_REDIS:
@@ -206,9 +242,6 @@ if USE_REDIS:
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": "redis://127.0.0.1:6379/1",
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            },
         }
     }
 else:
@@ -218,60 +251,41 @@ else:
         }
     }
 
-# --------------------------------------------------
-# SECURITY (PRODUCTION)
-# --------------------------------------------------
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
-# --------------------------------------------------
-# INTERNATIONALIZATION
-# --------------------------------------------------
-LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
-USE_I18N = True
-USE_TZ = True
-
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-# --------------------------------------------------
-# LOGGING CONFIGURATION (PRODUCTION DEBUGGING)
-# --------------------------------------------------
+# =========================================================
+# LOGGING
+# =========================================================
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+
     "formatters": {
         "verbose": {
-            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
-            "style": "{",
-        },
-        "simple": {
-            "format": "{levelname} {message}",
+            "format": "{levelname} {asctime} {module} {message}",
             "style": "{",
         },
     },
+
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "verbose",
         },
     },
+
     "root": {
         "handlers": ["console"],
         "level": "INFO",
     },
+
     "loggers": {
         "django": {
             "handlers": ["console"],
-            "level": "ERROR",  # Catches all 500 errors and server crashes
+            "level": "ERROR",
             "propagate": True,
         },
         "django.request": {
             "handlers": ["console"],
-            "level": "ERROR",  # Specifically logs broken incoming requests
+            "level": "ERROR",
             "propagate": False,
         },
     },

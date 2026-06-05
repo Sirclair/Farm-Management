@@ -1,7 +1,14 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
-from .models import Product, ProductCategory, InventoryItem
+from accounts.utils import get_user_farm
+
+from .models import (
+    Product,
+    ProductCategory,
+    InventoryItem,
+)
+
 from .serializers import (
     ProductSerializer,
     ProductCategorySerializer,
@@ -17,7 +24,7 @@ class ProductCategoryViewSet(viewsets.ModelViewSet):
     serializer_class = ProductCategorySerializer
     permission_classes = [IsAuthenticated]
 
-    queryset = ProductCategory.objects.all()
+    queryset = ProductCategory.objects.all().order_by("name")
 
 
 # =====================================================
@@ -30,22 +37,22 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
 
-        print("USER:", self.request.user)
-
-        print("ACTIVE FARM:", self.request.user.active_farm)
-
-        farm = self.request.user.active_farm
-
-        if not farm:
+        if getattr(self, "swagger_fake_view", False):
             return Product.objects.none()
 
-        return Product.objects.filter(
-            farm=farm
-        ).select_related("category")
+        farm = get_user_farm(self.request.user)
+
+        return (
+            Product.objects
+            .filter(farm=farm)
+            .select_related("category")
+            .order_by("name")
+        )
 
     def perform_create(self, serializer):
+
         serializer.save(
-            farm=self.request.user.active_farm
+            farm=get_user_farm(self.request.user)
         )
 
 
@@ -58,12 +65,20 @@ class InventoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        farm = self.request.user.active_farm
 
-        if not farm:
+        if getattr(self, "swagger_fake_view", False):
             return InventoryItem.objects.none()
 
-        return InventoryItem.objects.filter(farm=farm)
+        farm = get_user_farm(self.request.user)
+
+        return (
+            InventoryItem.objects
+            .filter(farm=farm)
+            .order_by("name")
+        )
 
     def perform_create(self, serializer):
-        serializer.save(farm=self.request.user.active_farm)
+
+        serializer.save(
+            farm=get_user_farm(self.request.user)
+        )

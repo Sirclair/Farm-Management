@@ -1,45 +1,26 @@
+from decimal import Decimal
 from django.db import models
+from accounts.models import Farm
 
 
 # =========================
-# INVENTORY
+# INVENTORY ITEM
 # =========================
 class InventoryItem(models.Model):
     farm = models.ForeignKey(
-        "accounts.Farm",
+        Farm,
         on_delete=models.CASCADE,
         related_name="inventory_stock"
     )
 
     name = models.CharField(max_length=100)
+    category = models.CharField(max_length=20, default="feed")
 
-    category = models.CharField(
-        max_length=20,
-        default="feed"
-    )
+    current_level = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    unit_of_measure = models.CharField(max_length=20, default="KG")
 
-    current_level = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0
-    )
-
-    unit_of_measure = models.CharField(
-        max_length=20,
-        default="KG"
-    )
-
-    cost_per_unit = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=0
-    )
-
-    min_stock_level = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=10
-    )
+    cost_per_unit = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    min_stock_level = models.DecimalField(max_digits=10, decimal_places=2, default=10)
 
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -49,7 +30,6 @@ class InventoryItem(models.Model):
     def save(self, *args, **kwargs):
         if self.name:
             self.name = self.name.upper().strip()
-
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -60,7 +40,6 @@ class InventoryItem(models.Model):
 # STOCK LOG
 # =========================
 class StockLog(models.Model):
-
     ACTION_CHOICES = [
         ("add", "Stock In"),
         ("use", "Stock Out"),
@@ -73,21 +52,9 @@ class StockLog(models.Model):
         related_name="logs"
     )
 
-    action = models.CharField(
-        max_length=10,
-        choices=ACTION_CHOICES
-    )
-
-    quantity_changed = models.DecimalField(
-        max_digits=10,
-        decimal_places=2
-    )
-
-    unit_price_at_time = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=0
-    )
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES)
+    quantity_changed = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_price_at_time = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     timestamp = models.DateTimeField(auto_now_add=True)
 
@@ -99,34 +66,18 @@ class StockLog(models.Model):
 # SUPPLIER
 # =========================
 class Supplier(models.Model):
-
     farm = models.ForeignKey(
-        "accounts.Farm",
+        Farm,
         on_delete=models.CASCADE,
         related_name="suppliers"
     )
 
     name = models.CharField(max_length=120)
-
-    contact_person = models.CharField(
-        max_length=120,
-        blank=True,
-        null=True
-    )
-
-    phone = models.CharField(
-        max_length=30,
-        blank=True,
-        null=True
-    )
-
-    email = models.EmailField(
-        blank=True,
-        null=True
-    )
+    contact_person = models.CharField(max_length=120, blank=True, null=True)
+    phone = models.CharField(max_length=30, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
 
     is_active = models.BooleanField(default=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -137,7 +88,6 @@ class Supplier(models.Model):
 # PURCHASE ORDER
 # =========================
 class PurchaseOrder(models.Model):
-
     STATUS_CHOICES = [
         ("draft", "Draft"),
         ("sent", "Sent"),
@@ -147,7 +97,7 @@ class PurchaseOrder(models.Model):
     ]
 
     farm = models.ForeignKey(
-        "accounts.Farm",
+        Farm,
         on_delete=models.CASCADE,
         related_name="purchase_orders"
     )
@@ -158,25 +108,12 @@ class PurchaseOrder(models.Model):
         related_name="orders"
     )
 
-    reference = models.CharField(
-        max_length=50,
-        unique=True
-    )
+    reference = models.CharField(max_length=50, unique=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
 
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default="draft"
-    )
-
-    total_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0
-    )
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
-
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -193,7 +130,6 @@ class PurchaseOrder(models.Model):
 # PURCHASE ORDER ITEM
 # =========================
 class PurchaseOrderItem(models.Model):
-
     order = models.ForeignKey(
         PurchaseOrder,
         on_delete=models.CASCADE,
@@ -201,31 +137,22 @@ class PurchaseOrderItem(models.Model):
     )
 
     item_name = models.CharField(max_length=120)
-
-    quantity = models.DecimalField(
-        max_digits=10,
-        decimal_places=2
-    )
-
-    unit_price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2
-    )
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
 
     def get_total(self):
         return self.quantity * self.unit_price
 
     def __str__(self):
-        return f"{self.item_name} ({self.quantity})"
+        return f"{self.item_name}"
 
 
 # =========================
 # INVENTORY PURCHASE
 # =========================
 class InventoryPurchase(models.Model):
-
     farm = models.ForeignKey(
-        "accounts.Farm",
+        Farm,
         on_delete=models.CASCADE,
         related_name="inventory_purchases"
     )
@@ -243,27 +170,12 @@ class InventoryPurchase(models.Model):
         related_name="purchases"
     )
 
-    quantity = models.DecimalField(
-        max_digits=12,
-        decimal_places=2
-    )
+    quantity = models.DecimalField(max_digits=12, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    total_cost = models.DecimalField(max_digits=12, decimal_places=2)
 
-    unit_price = models.DecimalField(
-        max_digits=12,
-        decimal_places=2
-    )
-
-    total_cost = models.DecimalField(
-        max_digits=12,
-        decimal_places=2
-    )
-
-    notes = models.TextField(
-        blank=True,
-        null=True
-    )
-
+    notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.inventory_item.name} - R{self.total_cost}"
+        return f"{self.inventory_item.name}"
