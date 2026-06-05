@@ -166,32 +166,26 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # --------------------------------------------------
-# CORS (FIXED FOR PREFLIGHT + VERCEL)
 # --------------------------------------------------
-
+# CORS
+# --------------------------------------------------
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "r"^https://.*\.vercel\.app$",",
+]
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.vercel\.app$",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
+    "https://*.vercel.app",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    r"^https://.*\.vercel\.app$",
 ]
-
-#CORS_ALLOW_HEADERS = [
-    #"accept",
-    #"authorization",
-    #"content-type",
-    #"origin",
-    #"x-csrftoken",
-    #"x-requested-with",
-#]
 
 CORS_ALLOW_METHODS = [
     "GET",
@@ -201,8 +195,6 @@ CORS_ALLOW_METHODS = [
     "DELETE",
     "OPTIONS",
 ]
-
-
 
 # --------------------------------------------------
 # CACHE
