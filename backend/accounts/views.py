@@ -1,7 +1,7 @@
 #from django.conf import settings
 from django.contrib.auth import update_session_auth_hash
 #from django.core.mail import send_mail
-from django.utils import timezone
+#from django.utils import timezone
 
 from accounts.utils import get_user_farm
 
@@ -20,37 +20,6 @@ from .serializers import (
 )
 
 from flock.models import FlockBatch
-
-# ---------------- OTP ----------------
-
-
-class VerifyOTPView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        email = request.data.get("email")
-        code = request.data.get("code")
-
-        if not email or not code:
-            return Response({"error": "Email and code required"}, status=400)
-
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=404)
-
-        if user.otp_code != code:
-            return Response({"error": "Invalid code"}, status=400)
-
-        if user.otp_expiry and timezone.now() > user.otp_expiry:
-            return Response({"error": "Code expired"}, status=400)
-
-        user.is_verified = True
-        user.otp_code = None
-        user.save()
-
-        return Response({"message": "Verified"})
-
 
 # ---------------- AUTH ----------------
 

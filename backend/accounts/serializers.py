@@ -55,6 +55,7 @@ class FarmRegistrationSerializer(serializers.ModelSerializer):
                 **validated_data,
                 password=password,
                 role="owner" if farm_name else "customer",
+                is_verified=True,  # Auto-verify for simplicity; adjust as needed   
             )
 
             if farm_name:
