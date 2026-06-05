@@ -173,7 +173,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://farm-management-bice.vercel.app",
+    "r"^https://.*\.vercel\.app$",",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -181,7 +181,7 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://farm-management-bice.vercel.app",
+    r"^https://.*\.vercel\.app$",
 ]
 
 #CORS_ALLOW_HEADERS = [
