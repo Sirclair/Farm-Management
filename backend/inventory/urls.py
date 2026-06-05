@@ -7,8 +7,7 @@ from .views import (
     SupplierViewSet,
     PurchaseOrderViewSet,
     InventoryPurchaseViewSet,
-    create_reorder,
-    convert_reorder_to_po,
+    
 )
 
 router = DefaultRouter()
@@ -40,10 +39,4 @@ router.register(
 urlpatterns = [
     path("", include(router.urls)),
 
-    path("reorder/", create_reorder),
-
-    path(
-        "convert-reorder/",
-        convert_reorder_to_po
-    ),
 ]
