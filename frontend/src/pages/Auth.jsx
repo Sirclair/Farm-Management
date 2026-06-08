@@ -28,6 +28,7 @@ export default function Auth() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setLoading(true);
     setError('');
     setSuccess('');
@@ -43,12 +44,17 @@ export default function Auth() {
         localStorage.setItem('refresh', res.data.refresh);
 
         const userRes = await api.get('/api/my-farm/accounts/me/');
+
         setUser(userRes.data);
+
         navigate(nextPath || '/dashboard');
       } else {
         await api.post('/api/my-farm/accounts/register/', formData);
+
         setSuccess('Account created successfully. Please sign in.');
+
         setMode('login');
+
         setFormData({
           username: '',
           password: '',
@@ -60,10 +66,12 @@ export default function Auth() {
       }
     } catch (err) {
       const serverError = err.response?.data;
+
       const msg =
         typeof serverError === 'object'
           ? Object.values(serverError).flat()[0]
           : 'Action failed. Please try again.';
+
       setError(msg);
     } finally {
       setLoading(false);
@@ -71,79 +79,89 @@ export default function Auth() {
   };
 
   const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-indigo-950 to-slate-950 flex items-center justify-center p-4 sm:p-6 antialiased selection:bg-indigo-500/30">
-      {/* Decorative Background Elements for Depth */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-950 via-emerald-950 to-slate-950 flex items-center justify-center px-4 py-8">
+      {/* Background Glow */}
+      <div className="absolute top-20 left-20 w-96 h-96 bg-emerald-500/10 rounded-full blur-[120px]" />
+      <div className="absolute bottom-20 right-20 w-96 h-96 bg-green-500/10 rounded-full blur-[120px]" />
 
       <motion.div
-        initial={{ opacity: 0, y: 15 }}
+        initial={{ opacity: 0, y: 25 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="w-full max-w-[440px] bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-800 p-8 sm:p-10 shadow-2xl shadow-black/40"
+        transition={{ duration: 0.5 }}
+        className="relative w-full max-w-lg"
       >
-        {/* Universal Multi-Tenant Brand Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-indigo-600 shadow-lg shadow-indigo-500/20 mb-4">
-            <svg
-              className="w-6 h-6 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m2.828-9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-              />
-            </svg>
+        <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl p-8 md:p-10">
+          {/* Logo */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-xl shadow-green-500/30 mb-5">
+              <span className="text-4xl">🌾</span>
+            </div>
+
+            <h1 className="text-3xl font-bold text-white">Farm Management Pro</h1>
+
+            <p className="text-slate-400 mt-2">Poultry • Inventory • Sales • Finance</p>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">AgriOS</h1>
-          <p className="text-sm text-slate-400 mt-1.5">The multi-tenant farming network</p>
-        </div>
 
-        {/* Segmented Control Toggle */}
-        <div className="relative flex mb-8 bg-slate-950/60 rounded-xl p-1 border border-slate-800/80">
-          <button
-            type="button"
-            onClick={() => {
-              setMode('login');
-              setError('');
-            }}
-            className={`flex-1 py-2.5 rounded-lg text-sm font-semibold tracking-wide transition-all duration-200 z-10 ${
-              mode === 'login' ? 'text-white' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode('register');
-              setError('');
-            }}
-            className={`flex-1 py-2.5 rounded-lg text-sm font-semibold tracking-wide transition-all duration-200 z-10 ${
-              mode === 'register' ? 'text-white' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            Get Started
-          </button>
-          {/* Animated background slider for the tabs */}
-          <motion.div
-            className="absolute top-1 bottom-1 left-1 bg-gradient-to-r from-slate-800 to-slate-800/80 rounded-lg shadow-md border border-slate-700/30"
-            animate={{ x: mode === 'login' ? '0%' : '98%' }}
-            style={{ width: '49%' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          />
-        </div>
+          {/* Features */}
+          <div className="grid grid-cols-2 gap-3 mb-8">
+            <FeatureCard title="Flock Tracking" value="Real-Time" />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-3.5">
+            <FeatureCard title="Inventory" value="Smart Control" />
+
+            <FeatureCard title="Sales" value="Track Revenue" />
+
+            <FeatureCard title="Finance" value="Profit Analytics" />
+          </div>
+
+          {/* Tabs */}
+          <div className="relative flex bg-black/30 p-1 rounded-xl border border-white/10 mb-8">
+            <motion.div
+              animate={{
+                x: mode === 'login' ? '0%' : '100%',
+              }}
+              transition={{
+                type: 'spring',
+                stiffness: 300,
+                damping: 30,
+              }}
+              className="absolute left-1 top-1 bottom-1 w-[calc(50%-4px)] bg-gradient-to-r from-emerald-500 to-green-600 rounded-lg"
+            />
+
+            <button
+              type="button"
+              onClick={() => {
+                setMode('login');
+                setError('');
+              }}
+              className={`flex-1 z-10 py-3 text-sm font-semibold transition ${
+                mode === 'login' ? 'text-white' : 'text-slate-400'
+              }`}
+            >
+              Sign In
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMode('register');
+                setError('');
+              }}
+              className={`flex-1 z-10 py-3 text-sm font-semibold transition ${
+                mode === 'register' ? 'text-white' : 'text-slate-400'
+              }`}
+            >
+              Create Account
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             <FormInput
               required
               placeholder="Username"
@@ -151,36 +169,47 @@ export default function Auth() {
               onChange={(val) => handleInputChange('username', val)}
             />
 
-            <AnimatePresence mode="popLayout">
+            <AnimatePresence>
               {mode === 'register' && (
                 <motion.div
-                  initial={{ opacity: 0, height: 0, y: -10 }}
-                  animate={{ opacity: 1, height: 'auto', y: 0 }}
-                  exit={{ opacity: 0, height: 0, y: -10 }}
-                  transition={{ duration: 0.25 }}
-                  className="space-y-3.5 overflow-hidden"
+                  initial={{
+                    opacity: 0,
+                    height: 0,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    height: 'auto',
+                  }}
+                  exit={{
+                    opacity: 0,
+                    height: 0,
+                  }}
+                  className="space-y-4 overflow-hidden"
                 >
                   <FormInput
                     required
                     type="email"
-                    placeholder="Email address"
+                    placeholder="Email Address"
                     value={formData.email}
                     onChange={(val) => handleInputChange('email', val)}
                   />
+
                   <FormInput
                     required
-                    placeholder="Farm enterprise name"
+                    placeholder="Farm Name"
                     value={formData.farm_name}
                     onChange={(val) => handleInputChange('farm_name', val)}
                   />
-                  <div className="grid grid-cols-2 gap-3.5">
+
+                  <div className="grid grid-cols-2 gap-4">
                     <FormInput
-                      placeholder="First name"
+                      placeholder="First Name"
                       value={formData.first_name}
                       onChange={(val) => handleInputChange('first_name', val)}
                     />
+
                     <FormInput
-                      placeholder="Last name"
+                      placeholder="Last Name"
                       value={formData.last_name}
                       onChange={(val) => handleInputChange('last_name', val)}
                     />
@@ -196,68 +225,45 @@ export default function Auth() {
               value={formData.password}
               onChange={(val) => handleInputChange('password', val)}
             />
-          </div>
 
-          {/* Feedback Messages */}
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium p-3 rounded-xl flex items-center gap-2"
-            >
-              <span className="w-1.5 h-1.5 bg-red-400 rounded-full shrink-0" />
-              {error}
-            </motion.div>
-          )}
-
-          {success && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium p-3 rounded-xl flex items-center gap-2"
-            >
-              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full shrink-0" />
-              {success}
-            </motion.div>
-          )}
-
-          {/* Action Button */}
-          <button
-            disabled={loading}
-            className="w-full mt-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white py-3.5 rounded-xl text-sm font-semibold tracking-wide hover:from-indigo-400 hover:to-indigo-500 active:scale-[0.99] transition-all duration-150 shadow-lg shadow-indigo-500/20 disabled:opacity-40 disabled:pointer-events-none"
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                Syncing setup...
-              </span>
-            ) : mode === 'login' ? (
-              'Sign In to Dashboard'
-            ) : (
-              'Deploy Farm Instance'
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl">
+                {error}
+              </div>
             )}
-          </button>
-        </form>
+
+            {success && (
+              <div className="bg-green-500/10 border border-green-500/20 text-green-400 text-sm p-3 rounded-xl">
+                {success}
+              </div>
+            )}
+
+            <button
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white py-3.5 rounded-xl font-semibold transition-all shadow-xl shadow-green-500/20 disabled:opacity-50"
+            >
+              {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Farm Account'}
+            </button>
+          </form>
+
+          <div className="mt-8 text-center">
+            <p className="text-xs text-slate-500">Trusted by poultry farmers across Africa</p>
+          </div>
+        </div>
       </motion.div>
     </div>
   );
 }
 
-// Reusable Input Sub-component for better cleanliness and style uniformity
+function FeatureCard({ title, value }) {
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+      <p className="text-xs text-slate-400">{title}</p>
+      <p className="text-white font-semibold mt-1">{value}</p>
+    </div>
+  );
+}
+
 function FormInput({ type = 'text', placeholder, value, onChange, required = false }) {
   return (
     <input
@@ -266,7 +272,7 @@ function FormInput({ type = 'text', placeholder, value, onChange, required = fal
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full px-4 py-3.5 rounded-xl border border-slate-800 bg-slate-950/40 text-slate-100 placeholder-slate-500 text-sm outline-none transition-all duration-200 focus:border-indigo-500/80 focus:ring-4 focus:ring-indigo-500/10 focus:bg-slate-950/60"
+      className="w-full px-4 py-3.5 rounded-xl bg-black/20 border border-white/10 text-white placeholder-slate-500 outline-none transition-all focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
     />
   );
 }
