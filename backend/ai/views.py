@@ -21,10 +21,11 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import A4
 
+
 from sales.models import Order
 from finance.models import Expense
 from flock.models import FlockBatch
-
+from accounts.utils import get_user_farm
 
 # =========================================================
 # AI INSIGHTS
@@ -33,7 +34,7 @@ from flock.models import FlockBatch
 @api_view(["GET"])
 def ai_insights(request):
 
-    farm = request.user.active_farm
+    farm = get_user_farm(request.user)
 
     if not farm:
         return Response(
@@ -210,7 +211,7 @@ def ai_insights(request):
 @api_view(["GET"])
 def download_ai_report(request):
 
-    farm = request.user.active_farm
+    farm = get_user_farm(request.user)
 
     if not farm:
         return Response(

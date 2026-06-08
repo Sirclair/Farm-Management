@@ -6,6 +6,7 @@ from drf_spectacular.utils import extend_schema_field
 
 from flock.models import FlockBatch
 from .models import Farm, FarmMembership, User
+from .utils import get_user_farm    
 
 
 class FarmSerializer(serializers.ModelSerializer):
@@ -88,12 +89,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ]
 
     def get_farm(self, obj):
-        farm = obj.active_farm
+        farm = get_user_farm(obj)
         return FarmSerializer(farm).data if farm else None
 
     # Safe fallback lookup method
     def get_farm_name(self, obj):
-        farm = obj.active_farm
+        farm = get_user_farm(obj)
         return farm.name if farm else "Zonke Farms"
 
 class FarmProductSerializer(serializers.ModelSerializer):

@@ -4,6 +4,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from accounts.utils import get_user_farm
 
 from .models import (
     InventoryItem,
@@ -26,7 +27,7 @@ from .serializers import (
 # -------------------------------------------------
 class FarmMixin:
     def get_farm(self):
-        return getattr(self.request.user, "active_farm", None)
+        return get_user_farm(self.request.user)
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False) or not self.request.user.is_authenticated:

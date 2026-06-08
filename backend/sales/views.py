@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from flock.models import FlockBatch
 from products.models import Product
 from inventory.models import StockLog
+from accounts.utils import get_user_farm
 
 from .models import (
     Customer,
@@ -34,7 +35,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        farm = self.request.user.active_farm
+        farm = get_user_farm(self.request.user)
         if not farm:
             return Order.objects.none()
 
@@ -47,7 +48,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
-        farm = request.user.active_farm
+        farm = get_user_farm(request.user)
         if not farm:
             return Response({"error": "No active farm"}, status=403)
 
@@ -222,7 +223,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        farm = self.request.user.active_farm
+        farm = get_user_farm(self.request.user)
 
         if not farm:
             return Payment.objects.none()
@@ -251,7 +252,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        farm = self.request.user.active_farm
+        farm = get_user_farm(self.request.user)
 
         if not farm:
             return Customer.objects.none()
@@ -259,7 +260,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
         return Customer.objects.filter(farm=farm)
 
     def perform_create(self, serializer):
-        serializer.save(farm=self.request.user.active_farm)
+        serializer.save(farm=get_user_farm(self.request.user))
 
 
 # =========================================================
@@ -267,7 +268,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 # =========================================================
 @api_view(["GET"])
 def sales_analytics(request):
-    farm = request.user.active_farm
+    farm = get_user_farm(request.user)
 
     if not farm:
         return Response(
@@ -302,7 +303,7 @@ class PendingOrderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        farm = self.request.user.active_farm
+        farm = get_user_farm(self.request.user)
 
         if not farm:
             return PendingOrder.objects.none()
@@ -315,7 +316,7 @@ class PendingOrderViewSet(viewsets.ModelViewSet):
         )
 
     def perform_create(self, serializer):
-        serializer.save(farm=self.request.user.active_farm)
+        serializer.save(farm=get_user_farm(self.request.user))
 
     # =====================================================
     # UPDATE (FIXED DEPOSIT LOGIC HERE)
