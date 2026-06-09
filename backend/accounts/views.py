@@ -10,6 +10,7 @@ from .serializers import (
     FarmProductSerializer,
     FarmRegistrationSerializer,
     FarmSerializer,
+    UserProfileSerializer,
 )
 
 from flock.models import FlockBatch
@@ -24,11 +25,11 @@ class RegisterView(generics.CreateAPIView):
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
 def current_user(request):
-    return Response({
-        "id": request.user.id,
-        "username": request.user.username,
-        "email": request.user.email,
-    })
+    """
+    Returns the serialized platform identity profile context for the active user session.
+    """
+    serializer = UserProfileSerializer(request.user)
+    return Response(serializer.data)
 
 
 class FarmViewSet(viewsets.ModelViewSet):

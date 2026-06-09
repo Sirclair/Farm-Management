@@ -15,12 +15,15 @@ export const UserProvider = ({ children }) => {
     }
 
     try {
-      // Standardized to match your Django URLs
+      // Hits the current_user Django view which now passes the full UserProfileSerializer payload
       const res = await api.get('/api/my-farm/accounts/me/');
       setUser(res.data);
     } catch (err) {
-      if (err.response?.status !== 401) console.error('Verify failed:', err);
+      if (err.response?.status !== 401) {
+        console.error('Verify failed:', err);
+      }
       localStorage.removeItem('access');
+      localStorage.removeItem('refresh'); // Clean up refresh token as well on failure
       setUser(null);
     } finally {
       setLoading(false);

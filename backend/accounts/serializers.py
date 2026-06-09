@@ -2,7 +2,6 @@ from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions
 from django.db import transaction
 from rest_framework import serializers
-from drf_spectacular.utils import extend_schema_field
 
 from flock.models import FlockBatch
 from .models import Farm, FarmMembership, User
@@ -56,7 +55,7 @@ class FarmRegistrationSerializer(serializers.ModelSerializer):
                 **validated_data,
                 password=password,
                 role="owner" if farm_name else "customer",
-                is_verified=True,  # Auto-verify for simplicity; adjust as needed   
+                is_verified=True,  # Auto-verify for simplicity
             )
 
             if farm_name:
@@ -72,7 +71,7 @@ class FarmRegistrationSerializer(serializers.ModelSerializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     farm = serializers.SerializerMethodField()
-    farm_name = serializers.SerializerMethodField()  # Add this field
+    farm_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -85,17 +84,17 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "last_name",
             "role",
             "farm",
-            "farm_name",  # Expose it to the frontend context
+            "farm_name",
         ]
 
     def get_farm(self, obj):
         farm = get_user_farm(obj)
         return FarmSerializer(farm).data if farm else None
 
-    # Safe fallback lookup method
     def get_farm_name(self, obj):
         farm = get_user_farm(obj)
-        return farm.name if farm else "Zonke Farms"
+        return farm.name if farm else "Command Center"
+
 
 class FarmProductSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="name")
