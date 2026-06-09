@@ -63,8 +63,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             customer, _ = Customer.objects.get_or_create(
                 farm=farm,
                 full_name=customer_name,
-            )
+                )
 
+        # 1. Spawn root Order tracking frame instance
         order = Order.objects.create(
             farm=farm,
             customer=customer,
@@ -95,6 +96,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                         status=400
                     )
 
+                # Safe validation using FlockBatch's dynamic stock property
                 if batch.current_stock < quantity:
                     return Response(
                         {"error": f"Only {batch.current_stock} birds available"},
@@ -207,11 +209,20 @@ class OrderViewSet(viewsets.ModelViewSet):
 
             paid += amount
 
+        # Explicitly run balance fields compilation metrics inside database records
         order.calculate_totals()
 
+        # 2. FIX: Fetch fresh evaluated query snapshot to populate frontend state correctly
+        fresh_order = (
+            Order.objects.filter(pk=order.pk)
+            .select_related("customer")
+            .prefetch_related("items__product", "items__batch", "payments")
+            .first()
+        )
+
         return Response(
-            OrderSerializer(order).data,
-            status=201
+            OrderSerializer(fresh_order).data,
+            status=status.HTTP_201_CREATED
         )
 
 
@@ -397,9 +408,10 @@ class PendingOrderViewSet(viewsets.ModelViewSet):
             self.process_cancellation_release(order)
 
     # =====================================================
-    # FINAL FULFILLMENT
+    # FINAL FULFILLMENT (FIXED FOR REAL ORDERITEMS & PROPERTY COMPATIBILITY)
     # =====================================================
     def process_final_fulfillment(self, pending_order):
+        # 1. Form a real tracking Order anchor row 
         final_order = Order.objects.create(
             farm=pending_order.farm,
             customer=pending_order.customer,
@@ -417,130 +429,50 @@ class PendingOrderViewSet(viewsets.ModelViewSet):
             )
         )
 
+        # 2. Build explicit child lines so items reflect on sales layout boards 
         for item in pending_order.items.all():
             qty_to_deduct = item.quantity_ordered - item.quantity_fulfilled
 
             if qty_to_deduct > 0:
-                inventory = item.product or item.batch
+                is_product = item.product is not None
+                inventory = item.product if is_product else item.batch
 
-                if inventory:
-                    # ----------------------------
-                    # STOCK REDUCTION SAFETY
-                    # ----------------------------
-                    if hasattr(inventory, "stock_quantity"):
-                        inventory.stock_quantity = max(
-                            Decimal("0.00"),
-                            Decimal(str(inventory.stock_quantity or 0)) - qty_to_deduct
-                        )
-                    elif hasattr(inventory, "birds_remaining"):
-                        inventory.birds_remaining = max(
-                            Decimal("0.00"),
-                            Decimal(str(inventory.birds_remaining or 0)) - qty_to_deduct
-                        )
-                    elif hasattr(inventory, "quantity"):
-                        inventory.quantity = max(
-                            Decimal("0.00"),
-                            Decimal(str(inventory.quantity or 0)) - qty_to_deduct
-                        )
+                if not inventory:
+                    continue
+
+                # Handle tracking adjustments safely on persistent database rows (Products)
+                if is_product:
+                    inventory.stock_quantity = max(
+                        Decimal("0.00"),
+                        Decimal(str(inventory.stock_quantity or 0)) - qty_to_deduct
+                    )
                     inventory.save()
 
-                # STOCK LOG
+                # 3. Create real OrderItems. For Live Poultry (`item.batch`), this safely 
+                # triggers your FlockBatch `@property` counters to reduce stock automatically!
+                OrderItem.objects.create(
+                    order=final_order,
+                    product=item.product,
+                    batch=item.batch,
+                    quantity=qty_to_deduct,
+                    price_per_unit=item.unit_price,
+                    cost_per_unit=getattr(item.product, "cost", Decimal("0.00")) if is_product else Decimal("0.00")
+                )
+
+                # Stock Log Record
                 try:
                     StockLog.objects.create(
                         item=inventory,
                         action="use",
                         quantity=qty_to_deduct,
-                        notes=f"Fulfilled {pending_order.order_number}"
+                        notes=f"Fulfilled reservation {pending_order.order_number}"
                     )
                 except Exception:
                     pass
 
-            # mark fulfilled
-            item.quantity_fulfilled = item.quantity_ordered
-            item.save()
-
-            # create final order item
-            OrderItem.objects.create(
-                order=final_order,
-                product=item.product,
-                batch=item.batch,
-                quantity=item.quantity_ordered,
-                price_per_unit=item.unit_price,
-                cost_per_unit=getattr(
-                    item.product,
-                    "cost",
-                    Decimal("0.00")
-                ) if item.product else Decimal("0.00")
-            )
-
-        # create payment record for deposit
-        if pending_order.deposit_paid > 0:
-            Payment.objects.create(
-                order=final_order,
-                amount=pending_order.deposit_paid,
-                method="cash",
-                reference=f"RESERVE-{pending_order.order_number}"
-            )
-
+        # 4. Pull child aggregate numbers to assign system calculation fields properly
         final_order.calculate_totals()
 
-    # =====================================================
-    # CANCEL
-    # =====================================================
     def process_cancellation_release(self, pending_order):
+        """Optional hook placeholder for cancellation logic."""
         pass
-
-    # =====================================================
-    # PARTIAL ITEM FULFILLMENT
-    # =====================================================
-    @action(detail=True, methods=["post"], url_path="fulfill-item")
-    def fulfill_item(self, request, pk=None):
-        order = self.get_object()
-        item_id = request.data.get("item_id")
-        quantity = Decimal(str(request.data.get("quantity", 0)))
-
-        try:
-            item = order.items.get(id=item_id)
-        except PendingOrderItem.DoesNotExist:
-            return Response(
-                {"error": "Item not found"},
-                status=404
-            )
-
-        if quantity <= 0:
-            return Response({"error": "Invalid quantity"}, status=400)
-
-        if quantity > item.quantity_remaining:
-            return Response({"error": "Exceeds remaining"}, status=400)
-
-        inventory = item.product or item.batch
-        available = getattr(
-            inventory,
-            "stock_quantity",
-            getattr(inventory, "birds_remaining", 0)
-        )
-
-        if available < quantity:
-            return Response({"error": "Insufficient stock"}, status=400)
-
-        with transaction.atomic():
-            if hasattr(inventory, "stock_quantity"):
-                inventory.stock_quantity -= quantity
-            elif hasattr(inventory, "birds_remaining"):
-                inventory.birds_remaining -= quantity
-            elif hasattr(inventory, "quantity"):
-                inventory.quantity -= quantity
-
-            inventory.save()
-
-            item.quantity_fulfilled += quantity
-            item.save()
-
-            PendingOrderFulfillment.objects.create(
-                pending_order_item=item,
-                quantity_delivered=quantity
-            )
-
-        return Response(
-            self.get_serializer(order).data
-        )

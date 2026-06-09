@@ -64,6 +64,12 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
       fetchBatches();
       setNotification(null);
       setIsSubmitting(false);
+      // Reset form states completely on open
+      setCustomerName('');
+      setPaymentMethod('cash');
+      setReference('');
+      setAmountPaid('');
+      setItems([{ ...EMPTY_ITEM }]);
     }
   }, [isOpen]);
 
@@ -114,24 +120,23 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
 
         // Handle Category Mode Toggles cleanly
         if (field === 'sale_type') {
-          newItem.product = '';
-          newItem.batch = '';
-          newItem.quantity = 1;
-          newItem.weight = '';
-          newItem.price = '';
-          newItem.name = '';
+          return {
+            ...EMPTY_ITEM,
+            sale_type: value,
+            quantity: value === 'live' ? 1 : 1,
+          };
         }
 
         if (field === 'product') {
           const selected = getProduct(value);
           if (selected) {
             newItem.name = selected.name;
-            newItem.price = selected.price;
+            newItem.price = selected.price || '';
             newItem.quantity = 1;
             newItem.weight = '';
 
             if (isDressedProduct(selected)) {
-              newItem.price = 50; // Standard base pricing fallback for dressed products
+              newItem.price = selected.price || 50; // Use product database price or standard base fallback
             }
           }
         }
@@ -144,11 +149,15 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
           }
         }
 
-        // Keep weight and quantity synchronized for processed items
-        const product = getProduct(newItem.product);
-        if (product && isDressedProduct(product)) {
-          const weight = parseFloat(newItem.weight) || 0;
-          newItem.quantity = weight;
+        // Keep weight and quantity synchronized explicitly for processed items
+        if (newItem.sale_type === 'product') {
+          const product = getProduct(newItem.product);
+          if (product && isDressedProduct(product)) {
+            if (field === 'weight') {
+              const weightVal = parseFloat(value) || 0;
+              newItem.quantity = weightVal;
+            }
+          }
         }
 
         return newItem;
@@ -156,10 +165,12 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
     });
   };
 
-  // Live memoized value calculation for total tracking
+  // Live memoized value calculation for tracking form grand totals
   const total = useMemo(() => {
     return items.reduce((acc, item) => {
-      return acc + (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0);
+      const q = parseFloat(item.quantity) || 0;
+      const p = parseFloat(item.price) || 0;
+      return acc + q * p;
     }, 0);
   }, [items]);
 
@@ -167,7 +178,6 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
   const submit = async () => {
     if (isSubmitting) return;
 
-    // 1. Validation checks
     if (!items || items.length === 0) {
       showNotification(
         'Cannot process order: Manifest line items are completely missing.',
@@ -176,7 +186,7 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
       return;
     }
 
-    // 2. Strict Line-by-Line Content Checking
+    // Strict Line-by-Line Content Validation
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const rowNum = i + 1;
@@ -189,9 +199,12 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
           );
           return;
         }
-        const parsedLiveQty = parseFloat(item.quantity) || 0;
+        const parsedLiveQty = parseInt(item.quantity, 10) || 0;
         if (parsedLiveQty <= 0) {
-          showNotification(`Line Item #${rowNum}: Bird count must be greater than 0.`, 'warning');
+          showNotification(
+            `Line Item #${rowNum}: Bird count must be an integer greater than 0.`,
+            'warning'
+          );
           return;
         }
       } else {
@@ -224,13 +237,7 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
       }
     }
 
-    const exactFormTotal = items.reduce((acc, item) => {
-      const q = parseFloat(item.quantity) || 0;
-      const p = parseFloat(item.price) || 0;
-      return acc + q * p;
-    }, 0);
-
-    if (exactFormTotal <= 0) {
+    if (total <= 0) {
       showNotification(
         'Cannot complete sale: Total order value must calculate above R 0.00',
         'warning'
@@ -242,14 +249,14 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
       setIsSubmitting(true);
       const token = localStorage.getItem('access');
 
-      // Restructure the data payload to perfectly match the backend expectations
+      // Restructure payload parameters to map safely onto your Django API architecture
       const payload = {
         customer_name: customerName.trim() || 'Walk-in Customer',
         items: items.map((item) => {
           if (item.sale_type === 'live') {
             return {
               batch_id: parseInt(item.batch, 10),
-              quantity: parseFloat(item.quantity),
+              quantity: parseInt(item.quantity, 10),
               price_per_unit: parseFloat(item.price),
             };
           }
@@ -261,26 +268,25 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
         }),
         payments: [
           {
-            amount: amountPaid === '' ? exactFormTotal : parseFloat(amountPaid),
+            amount:
+              amountPaid === ''
+                ? parseFloat(total.toFixed(2))
+                : parseFloat(parseFloat(amountPaid).toFixed(2)),
             method: paymentMethod,
             reference: reference.trim(),
           },
         ],
       };
 
-      // FIXED: Attached the defined ${API} base fallback domain string here
+      // Hit the explicit router patterns mapped on your sales viewset patterns
       await axios.post(`${API}/my-farm/sales/orders/`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       showNotification('Sale completed successfully! Syncing ledger metrics...', 'success');
 
-      // Reset state and cleanly close out UI components
+      // Dispatch layout re-fetches
       refreshSales?.();
-      setCustomerName('');
-      setReference('');
-      setAmountPaid('');
-      setItems([{ ...EMPTY_ITEM }]);
 
       setTimeout(() => {
         onClose();
@@ -411,7 +417,7 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
             <div className="space-y-4">
               {items.map((item, index) => {
                 const product = getProduct(item.product);
-                const isDressed = isDressedProduct(product);
+                const isDressed = item.sale_type === 'product' && isDressedProduct(product);
 
                 return (
                   <div
@@ -449,7 +455,8 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
                               <option value="">Choose Batch...</option>
                               {batches.map((b) => (
                                 <option key={b.id} value={b.id}>
-                                  Batch #{b.batch_number} {b.name ? `(${b.name})` : ''}
+                                  Batch #{b.batch_number} {b.name ? `(${b.name})` : ''} — (
+                                  {b.current_stock ?? 0} available)
                                 </option>
                               ))}
                             </select>
@@ -461,6 +468,7 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
                               disabled={isSubmitting}
                               type="number"
                               min="1"
+                              step="1"
                               value={item.quantity}
                               onChange={(e) => updateItem(index, 'quantity', e.target.value)}
                               placeholder="0"
@@ -498,7 +506,7 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
                               <option value="">Choose Product...</option>
                               {products.map((p) => (
                                 <option key={p.id} value={p.id}>
-                                  {p.name}
+                                  {p.name} — (R {p.price})
                                 </option>
                               ))}
                             </select>
