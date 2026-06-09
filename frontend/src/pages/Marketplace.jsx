@@ -9,7 +9,9 @@ export default function Marketplace() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const endpoint = 'http://127.0.0.1:8000/api/explore-farms/explore/';
+    // 1. Removed hardcoded localhost string to fix Vercel live environment CORS/Network Errors
+    // 2. Pointed to the exact API endpoint structure registered in your Django setup
+    const endpoint = '/api/my-farm/explore-farms/';
 
     api
       .get(endpoint)
