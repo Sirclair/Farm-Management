@@ -7,7 +7,6 @@ import {
   ShoppingCart,
   User,
   Package,
-  FileText,
   CheckCircle2,
   AlertTriangle,
   AlertCircle,
@@ -79,7 +78,7 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
       const res = await axios.get(`${API}/marketplace/items/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setProducts(res.data || []);
+      setProducts(res.data.results || res.data || []);
     } catch (err) {
       console.error('Error fetching marketplace inventory:', err);
     }
@@ -91,7 +90,9 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
       const res = await axios.get(`${API}/my-farm/flock/batches/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setBatches(res.data || []);
+      // STABILIZATION: Parse results array structural fallbacks identical to operations logic
+      const list = res.data.results || res.data || [];
+      setBatches(list);
     } catch (err) {
       console.error('Error fetching flock batches:', err);
     }
@@ -123,7 +124,7 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
           return {
             ...EMPTY_ITEM,
             sale_type: value,
-            quantity: value === 'live' ? 1 : 1,
+            quantity: 1,
           };
         }
 
@@ -136,7 +137,7 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
             newItem.weight = '';
 
             if (isDressedProduct(selected)) {
-              newItem.price = selected.price || 50; // Use product database price or standard base fallback
+              newItem.price = selected.price || 50;
             }
           }
         }
@@ -249,7 +250,6 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
       setIsSubmitting(true);
       const token = localStorage.getItem('access');
 
-      // Restructure payload parameters to map safely onto your Django API architecture
       const payload = {
         customer_name: customerName.trim() || 'Walk-in Customer',
         items: items.map((item) => {
@@ -278,14 +278,11 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
         ],
       };
 
-      // Hit the explicit router patterns mapped on your sales viewset patterns
       await axios.post(`${API}/my-farm/sales/orders/`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       showNotification('Sale completed successfully! Syncing ledger metrics...', 'success');
-
-      // Dispatch layout re-fetches
       refreshSales?.();
 
       setTimeout(() => {
@@ -408,11 +405,9 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
 
           {/* LINE ITEMS SECTION */}
           <div className="space-y-5">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                <Package size={16} /> Order Manifest Line Items
-              </h3>
-            </div>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <Package size={16} /> Order Manifest Line Items
+            </h3>
 
             <div className="space-y-4">
               {items.map((item, index) => {
@@ -439,7 +434,7 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
                         </select>
                       </div>
 
-                      {/* Conditional Options */}
+                      {/* Conditional Line Selection Layouts */}
                       {item.sale_type === 'live' ? (
                         <>
                           <div className="w-full lg:w-1/3 space-y-2">
@@ -450,7 +445,7 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
                               disabled={isSubmitting}
                               value={item.batch}
                               onChange={(e) => updateItem(index, 'batch', e.target.value)}
-                              className="w-full bg-[#0b0f19] border border-slate-800 focus:border-emerald-500/50 rounded-xl px-3.5 py-3 text-base text-white outline-none transition-all disabled:opacity-50"
+                              className="w-full bg-[#0b0f19] border border-slate-800 focus:border-emerald-500/50 rounded-xl px-3.5 py-3 text-base text-white outline-none transition-all"
                             >
                               <option value="">Choose Batch...</option>
                               {batches.map((b) => (
@@ -468,26 +463,10 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
                               disabled={isSubmitting}
                               type="number"
                               min="1"
-                              step="1"
                               value={item.quantity}
                               onChange={(e) => updateItem(index, 'quantity', e.target.value)}
-                              placeholder="0"
-                              className="w-full bg-[#0b0f19] border border-slate-800 focus:border-emerald-500/50 rounded-xl px-3.5 py-3 text-base text-white outline-none transition-all disabled:opacity-50"
-                            />
-                          </div>
-
-                          <div className="w-full lg:w-1/5 space-y-2">
-                            <label className="text-sm text-slate-300 font-medium">
-                              Price per Unit (R)
-                            </label>
-                            <input
-                              disabled={isSubmitting}
-                              type="number"
-                              step="0.01"
-                              value={item.price}
-                              onChange={(e) => updateItem(index, 'price', e.target.value)}
-                              placeholder="0.00"
-                              className="w-full bg-[#0b0f19] border border-slate-800 focus:border-emerald-500/50 rounded-xl px-3.5 py-3 text-base text-white outline-none transition-all disabled:opacity-50"
+                              placeholder="1"
+                              className="w-full bg-[#0b0f19] border border-slate-800 focus:border-emerald-500/50 rounded-xl px-3.5 py-3 text-base text-white outline-none"
                             />
                           </div>
                         </>
@@ -501,7 +480,7 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
                               disabled={isSubmitting}
                               value={item.product}
                               onChange={(e) => updateItem(index, 'product', e.target.value)}
-                              className="w-full bg-[#0b0f19] border border-slate-800 focus:border-emerald-500/50 rounded-xl px-3.5 py-3 text-base text-white outline-none transition-all disabled:opacity-50"
+                              className="w-full bg-[#0b0f19] border border-slate-800 focus:border-emerald-500/50 rounded-xl px-3.5 py-3 text-base text-white outline-none"
                             >
                               <option value="">Choose Product...</option>
                               {products.map((p) => (
@@ -525,101 +504,55 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
                                 updateItem(index, isDressed ? 'weight' : 'quantity', e.target.value)
                               }
                               placeholder="0"
-                              className="w-full bg-[#0b0f19] border border-slate-800 focus:border-emerald-500/50 rounded-xl px-3.5 py-3 text-base text-white outline-none transition-all disabled:opacity-50"
-                            />
-                          </div>
-
-                          <div className="w-full lg:w-1/5 space-y-2">
-                            <label className="text-sm text-slate-300 font-medium">
-                              Price per Unit (R)
-                            </label>
-                            <input
-                              disabled={isSubmitting}
-                              type="number"
-                              step="0.01"
-                              value={item.price}
-                              onChange={(e) => updateItem(index, 'price', e.target.value)}
-                              placeholder="0.00"
-                              className="w-full bg-[#0b0f19] border border-slate-800 focus:border-emerald-500/50 rounded-xl px-3.5 py-3 text-base text-white outline-none transition-all disabled:opacity-50"
+                              className="w-full bg-[#0b0f19] border border-slate-800 focus:border-emerald-500/50 rounded-xl px-3.5 py-3 text-base text-white outline-none"
                             />
                           </div>
                         </>
                       )}
 
-                      {/* Remove Button */}
-                      <button
-                        type="button"
-                        disabled={items.length === 1 || isSubmitting}
-                        onClick={() => removeItem(index)}
-                        className="w-full lg:w-14 h-[46px] rounded-xl bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white flex items-center justify-center border border-red-500/20 disabled:opacity-30 disabled:hover:bg-transparent disabled:text-slate-600 disabled:border-slate-800 transition-all"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      <div className="w-full lg:w-1/5 space-y-2">
+                        <label className="text-sm text-slate-300 font-medium">
+                          Price per Unit (R)
+                        </label>
+                        <input
+                          disabled={isSubmitting}
+                          type="number"
+                          step="0.01"
+                          value={item.price}
+                          onChange={(e) => updateItem(index, 'price', e.target.value)}
+                          placeholder="0.00"
+                          className="w-full bg-[#0b0f19] border border-slate-800 focus:border-emerald-500/50 rounded-xl px-3.5 py-3 text-base text-white outline-none"
+                        />
+                      </div>
+
+                      {items.length > 1 && (
+                        <button
+                          onClick={() => removeItem(index)}
+                          className="p-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl border border-red-500/20 transition-colors lg:mb-0.5"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
               })}
-            </div>
 
-            {/* Inline Add Button */}
-            <button
-              type="button"
-              onClick={addItem}
-              disabled={isSubmitting}
-              className="w-full py-3.5 border border-dashed border-slate-800 hover:border-emerald-500/40 rounded-xl text-sm font-semibold text-slate-400 hover:text-emerald-400 flex items-center justify-center gap-2 transition-all group bg-slate-900/20 disabled:opacity-40"
-            >
-              <Plus size={16} className="group-hover:scale-110 transition-transform" /> Add Another
-              Item Row
-            </button>
-          </div>
-
-          {/* AUDIT / SETTLEMENT DETAILS SECTION */}
-          <div className="bg-[#1e293b]/20 border border-slate-800/80 rounded-xl p-6 space-y-5">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <FileText size={16} /> Settlement Details
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-2">
-                <label className="text-sm text-slate-300 font-medium">
-                  Actual Amount Tendered (R)
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 text-sm">
-                    R
-                  </div>
-                  <input
-                    disabled={isSubmitting}
-                    type="number"
-                    step="0.01"
-                    value={amountPaid}
-                    onChange={(e) => setAmountPaid(e.target.value)}
-                    placeholder={total > 0 ? `${total.toFixed(2)} (Full Amount)` : '0.00'}
-                    className="w-full bg-[#0b0f19] border border-slate-800 focus:border-emerald-500/50 rounded-xl pl-9 pr-4 py-3.5 text-base text-white placeholder-slate-600 outline-none transition-all disabled:opacity-50"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm text-slate-300 font-medium">
-                  Reference Code / Receipt #
-                </label>
-                <input
-                  disabled={isSubmitting}
-                  value={reference}
-                  onChange={(e) => setReference(e.target.value)}
-                  placeholder="e.g. REF-00921"
-                  className="w-full bg-[#0b0f19] border border-slate-800 focus:border-emerald-500/50 rounded-xl px-4 py-3.5 text-base text-white placeholder-slate-600 outline-none transition-all disabled:opacity-50"
-                />
-              </div>
+              <button
+                onClick={addItem}
+                className="w-full py-4 border border-dashed border-slate-700 hover:border-slate-500 bg-slate-900/20 hover:bg-slate-900/40 text-slate-400 hover:text-slate-300 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all"
+              >
+                <Plus size={16} /> Add Another Item Row
+              </button>
             </div>
           </div>
         </div>
 
-        {/* BOTTOM BALANCING BAR */}
-        <div className="px-8 py-6 border-t border-slate-800 bg-[#1e293b]/40 flex flex-col sm:flex-row items-center justify-between gap-5">
-          <div className="bg-[#0b0f19] border border-slate-800 px-6 py-3 rounded-xl flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
-            <span className="text-xs font-bold uppercase text-slate-400 tracking-wider">
-              Total Value Due:
+        {/* FOOTER ACTION PANEL */}
+        <div className="px-8 py-6 border-t border-slate-800 bg-[#1e293b]/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-[#0b0f19] border border-slate-800 rounded-xl px-6 py-3 min-w-[200px] text-center sm:text-left">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 block">
+              Total Value Due
             </span>
             <span className="text-2xl font-black text-emerald-400 tracking-tight">
               R {total.toFixed(2)}
@@ -627,11 +560,11 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
           </div>
 
           <button
-            onClick={submit}
             disabled={isSubmitting}
-            className="w-full sm:w-auto sm:px-10 py-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded-xl text-base font-bold text-white shadow-lg shadow-emerald-950/20 transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={submit}
+            className="w-full sm:w-auto px-8 py-4 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 text-slate-950 font-bold uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-950/20 transition-all disabled:opacity-50"
           >
-            {isSubmitting ? 'Posting Transaction...' : 'Complete & Post Order'}
+            {isSubmitting ? 'Posting Order...' : 'Complete & Post Order'}
           </button>
         </div>
       </div>
