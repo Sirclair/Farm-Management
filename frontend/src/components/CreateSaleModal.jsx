@@ -75,7 +75,7 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
   const fetchProducts = async () => {
     try {
       const token = localStorage.getItem('access');
-      const res = await axios.get(`${API}/marketplace/items/`, {
+      const res = await axios.get('/api/my-farm/flock/batches/', {
         headers: { Authorization: `Bearer ${token}` },
       });
       setProducts(res.data.results || res.data || []);
