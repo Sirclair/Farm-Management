@@ -11,7 +11,7 @@ export default function Marketplace() {
   useEffect(() => {
     // 1. Removed hardcoded localhost string to fix Vercel live environment CORS/Network Errors
     // 2. Pointed to the exact API endpoint structure registered in your Django setup
-    const endpoint = '/api/my-farm/explore-farms/';
+    const endpoint = '/api/explore-farms/';
 
     api
       .get(endpoint)

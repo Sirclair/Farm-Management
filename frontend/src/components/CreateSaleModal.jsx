@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import {
   X,
   Plus,
@@ -11,8 +11,6 @@ import {
   AlertTriangle,
   AlertCircle,
 } from 'lucide-react';
-
-const API = 'http://127.0.0.1:8000/api';
 
 const EMPTY_ITEM = {
   sale_type: 'product',
@@ -74,10 +72,7 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
 
   const fetchProducts = async () => {
     try {
-      const token = localStorage.getItem('access');
-      const res = await axios.get('/api/my-farm/flock/batches/', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get('/api/my-farm/products/items/');
       setProducts(res.data.results || res.data || []);
     } catch (err) {
       console.error('Error fetching marketplace inventory:', err);
@@ -86,13 +81,8 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
 
   const fetchBatches = async () => {
     try {
-      const token = localStorage.getItem('access');
-      const res = await axios.get(`${API}/my-farm/flock/batches/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      // STABILIZATION: Parse results array structural fallbacks identical to operations logic
-      const list = res.data.results || res.data || [];
-      setBatches(list);
+      const res = await api.get('/api/my-farm/flock/batches/');
+      setBatches(res.data.results || res.data || []);
     } catch (err) {
       console.error('Error fetching flock batches:', err);
     }
@@ -278,7 +268,7 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
         ],
       };
 
-      await axios.post(`${API}/my-farm/sales/orders/`, payload, {
+      await axios.post(`api/my-farm/sales/orders/`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
