@@ -268,9 +268,7 @@ export default function CreateSaleModal({ isOpen, onClose, refreshSales }) {
         ],
       };
 
-      await axios.post(`api/my-farm/sales/orders/`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.post('/api/my-farm/sales/orders/', payload);
 
       showNotification('Sale completed successfully! Syncing ledger metrics...', 'success');
       refreshSales?.();
