@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from django.db import transaction
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
@@ -61,24 +61,48 @@ class InventoryItemViewSet(FarmMixin, viewsets.ModelViewSet):
         if not name:
             return Response({"error": "Name required"}, status=400)
 
+        supplier_id = request.data.get("supplier_id")
+        notes = request.data.get("notes", "")
+
         try:
             quantity = Decimal(str(request.data.get("quantity", 0)))
             unit_price = Decimal(str(request.data.get("unit_price", 0)))
-            total = quantity * unit_price
-        except:
-            return Response({"error": "Invalid numbers"}, status=400)
+            
+            if quantity <= 0 or unit_price <= 0:
+                return Response({"error": "Quantity and unit price must be greater than zero"}, status=400)
+                
+            total_cost = quantity * unit_price
+        except (ValueError, TypeError, InvalidOperation):
+            return Response({"error": "Invalid numeric values supplied"}, status=400)
 
         with transaction.atomic():
-            item, _ = InventoryItem.objects.get_or_create(
+            # 1. Fetch or create the inventory stock profile
+            item, created = InventoryItem.objects.get_or_create(
                 farm=farm,
                 name=name.upper(),
-                defaults={"current_level": 0}
+                defaults={
+                    "current_level": Decimal("0.00"),
+                    "cost_per_unit": Decimal("0.00")
+                }
             )
 
-            item.current_level += quantity
-            item.cost_per_unit = unit_price
+            # 2. Compute Weighted Moving Average Cost before updating current stock levels
+            old_qty = item.current_level
+            old_cost = item.cost_per_unit
+            new_qty = old_qty + quantity
+
+            if old_qty > 0:
+                # WAC Formula: ((Old Qty * Old Cost) + (New Qty * New Cost)) / Total Qty
+                calculated_unit_cost = ((old_qty * old_cost) + total_cost) / new_qty
+                item.cost_per_unit = calculated_unit_cost.quantize(Decimal("0.01"))
+            else:
+                # If stock was completely flat or first time entry, use current unit price
+                item.cost_per_unit = unit_price
+
+            item.current_level = new_qty
             item.save()
 
+            # 3. Create tracking verification log
             StockLog.objects.create(
                 item=item,
                 action="add",
@@ -86,11 +110,27 @@ class InventoryItemViewSet(FarmMixin, viewsets.ModelViewSet):
                 unit_price_at_time=unit_price
             )
 
+            # 4. Correctly commit entry into historical InventoryPurchase ledger
+            supplier_obj = None
+            if supplier_id:
+                supplier_obj = Supplier.objects.filter(id=supplier_id, farm=farm).first()
+
+            InventoryPurchase.objects.create(
+                farm=farm,
+                supplier=supplier_obj,
+                inventory_item=item,
+                quantity=quantity,
+                unit_price=unit_price,
+                total_cost=total_cost,
+                notes=notes
+            )
+
         return Response({
-            "message": "Stock updated",
+            "message": "Stock purchase logged and financial ledger updated successfully",
             "item": item.name,
-            "new_level": float(item.current_level)
-        })
+            "new_level": float(item.current_level),
+            "updated_weighted_cost": float(item.cost_per_unit)
+        }, status=status.HTTP_201_CREATED)
 
 
 # -------------------------------------------------
@@ -123,4 +163,4 @@ class PurchaseOrderViewSet(FarmMixin, viewsets.ModelViewSet):
 class InventoryPurchaseViewSet(FarmMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = InventoryPurchaseSerializer
     queryset = InventoryPurchase.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated] 
