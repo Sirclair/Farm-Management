@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import axios from '../api/axios';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
@@ -15,8 +15,6 @@ import {
   CheckCircle,
   AlertTriangle,
 } from 'lucide-react';
-
-const API = 'http://127.0.0.1:8000/api';
 
 const TIME_SLOTS = [
   { value: '06:00:00', label: '06:00 AM Run' },
@@ -99,14 +97,7 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
 
   const fetchCustomers = async () => {
     try {
-      const token = localStorage.getItem('access');
-
-      const response = await axios.get(`${API}/my-farm/sales/customers/`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+      const response = await axios.get('/api/my-farm/sales/customers/');
       setCustomers(Array.isArray(response.data) ? response.data : response.data.results || []);
     } catch (error) {
       console.error('Error loading customers:', error);
@@ -116,14 +107,7 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
 
   const fetchProducts = async () => {
     try {
-      const token = localStorage.getItem('access');
-
-      const response = await axios.get(`${API}/marketplace/items/`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+      const response = await axios.get('/api/marketplace/items/');
       setProducts(response.data || []);
     } catch (error) {
       console.error('Error fetching marketplace inventory:', error);
@@ -133,14 +117,7 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
 
   const fetchBatches = async () => {
     try {
-      const token = localStorage.getItem('access');
-
-      const response = await axios.get(`${API}/my-farm/flock/batches/`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+      const response = await axios.get('/api/my-farm/flock/batches/');
       setBatches(response.data || []);
     } catch (error) {
       console.error('Error fetching flock batches:', error);
@@ -171,7 +148,6 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
 
     updated[index][field] = value;
 
-    // Reset state when switching sale type
     if (field === 'sale_type') {
       updated[index] = {
         ...EMPTY_ITEM,
@@ -179,19 +155,15 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
       };
     }
 
-    // Auto-fill product pricing
     if (field === 'product' && value) {
       const selectedProduct = products.find((p) => String(p.id) === String(value));
-
       if (selectedProduct) {
         updated[index].unit_price = selectedProduct.price || 0;
       }
     }
 
-    // Auto-fill batch pricing
     if (field === 'batch' && value) {
       const selectedBatch = batches.find((b) => String(b.id) === String(value));
-
       if (selectedBatch) {
         updated[index].unit_price = selectedBatch.selling_price_per_bird || 0;
       }
@@ -213,14 +185,7 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
 
     try {
       setCustomerLoading(true);
-
-      const token = localStorage.getItem('access');
-
-      const response = await axios.post(`${API}/my-farm/sales/customers/`, newCustomer, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await axios.post('/api/my-farm/sales/customers/', newCustomer);
 
       showNotification('success', 'Customer account created successfully.');
 
@@ -241,7 +206,6 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
       });
     } catch (error) {
       console.error(error);
-
       showNotification('error', 'Failed to create customer account.');
     } finally {
       setCustomerLoading(false);
@@ -286,41 +250,26 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
     try {
       setLoading(true);
 
-      const token = localStorage.getItem('access');
-
       const formattedDate = formData.expected_delivery_date
         ? formData.expected_delivery_date.toISOString().split('T')[0]
         : null;
 
       const payload = {
         customer: parseInt(formData.customer),
-
         expected_delivery_date: formattedDate,
-
         delivery_time: formData.delivery_time || null,
-
         delivery_address: formData.delivery_address || '',
-
         notes: formData.notes || '',
-
         items: formData.items.map((item) => ({
           sale_type: item.sale_type,
-
           product: item.sale_type === 'product' ? parseInt(item.product) : null,
-
           batch: item.sale_type === 'live' ? parseInt(item.batch) : null,
-
           quantity_ordered: parseFloat(item.quantity_ordered),
-
           unit_price: parseFloat(item.unit_price),
         })),
       };
 
-      await axios.post(`${API}/my-farm/sales/pending-orders/`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await axios.post('/api/my-farm/sales/pending-orders/', payload);
 
       showNotification('success', 'Pending order created successfully.');
 
@@ -340,9 +289,7 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
       }, 1000);
     } catch (error) {
       console.error(error);
-
       const message = error.response?.data?.error || 'Failed to create pending order.';
-
       showNotification('error', message);
     } finally {
       setLoading(false);
@@ -353,7 +300,6 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
     return formData.items.reduce((sum, item) => {
       const qty = parseFloat(item.quantity_ordered) || 0;
       const price = parseFloat(item.unit_price) || 0;
-
       return sum + qty * price;
     }, 0);
   };
@@ -372,7 +318,6 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
 
             <div>
               <h2 className="text-2xl font-bold">Create Pending Order</h2>
-
               <p className="text-sm text-slate-400 mt-1">
                 Reserve products and live flock stock allocations
               </p>
@@ -402,7 +347,6 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
               ) : (
                 <CheckCircle size={18} />
               )}
-
               <span className="text-sm font-semibold">{notification.message}</span>
             </div>
           </div>
@@ -509,7 +453,6 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                 className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3"
               >
                 <option value="">Select Customer...</option>
-
                 {customers.map((customer) => (
                   <option key={customer.id} value={customer.id}>
                     {customer.full_name}
@@ -559,7 +502,6 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                 className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3"
               >
                 <option value="">Select Time Slot...</option>
-
                 {TIME_SLOTS.map((slot) => (
                   <option key={slot.value} value={slot.value}>
                     {slot.label}
@@ -570,7 +512,6 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
 
             <div className="bg-[#1e293b]/20 border border-slate-800 rounded-2xl p-5">
               <label className="text-sm text-slate-400 mb-3 block">Delivery Address</label>
-
               <input
                 type="text"
                 value={formData.delivery_address}
@@ -608,21 +549,18 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
                   <div className="lg:col-span-2">
                     <label className="text-sm text-slate-400 block mb-2">Category</label>
-
                     <select
                       value={item.sale_type}
                       onChange={(e) => handleItemChange(index, 'sale_type', e.target.value)}
                       className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-3 py-3"
                     >
                       <option value="product">Product</option>
-
                       <option value="live">Live Broiler</option>
                     </select>
                   </div>
 
                   <div className="lg:col-span-4">
                     <label className="text-sm text-slate-400 block mb-2">Inventory Item</label>
-
                     {item.sale_type === 'product' ? (
                       <select
                         value={item.product}
@@ -630,7 +568,6 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                         className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-3 py-3"
                       >
                         <option value="">Select Product...</option>
-
                         {products.map((product) => (
                           <option key={product.id} value={product.id}>
                             {product.name}
@@ -644,7 +581,6 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                         className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-3 py-3"
                       >
                         <option value="">Select Batch...</option>
-
                         {batches.map((batch) => (
                           <option key={batch.id} value={batch.id}>
                             Batch #{batch.batch_number} {batch.name ? `(${batch.name})` : ''}
@@ -656,7 +592,6 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
 
                   <div className="lg:col-span-2">
                     <label className="text-sm text-slate-400 block mb-2">Quantity</label>
-
                     <input
                       type="number"
                       min="1"
@@ -668,7 +603,6 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
 
                   <div className="lg:col-span-2">
                     <label className="text-sm text-slate-400 block mb-2">Unit Price</label>
-
                     <input
                       type="number"
                       step="0.01"
@@ -680,7 +614,6 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
 
                   <div className="lg:col-span-1 text-right">
                     <div className="text-xs text-slate-500 mb-2">Total</div>
-
                     <div className="font-bold text-emerald-400">
                       R{' '}
                       {(
@@ -710,7 +643,6 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
             <label className="text-sm font-semibold uppercase tracking-wider text-slate-400">
               Notes
             </label>
-
             <textarea
               rows={4}
               value={formData.notes}
@@ -732,7 +664,6 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
             <span className="text-xs uppercase tracking-wider text-slate-400 font-bold">
               Total Reserved Value
             </span>
-
             <span className="text-2xl font-black text-emerald-400">
               R {calculateTotal().toFixed(2)}
             </span>
