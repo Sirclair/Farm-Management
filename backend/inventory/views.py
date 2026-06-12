@@ -65,73 +65,84 @@ class InventoryItemViewSet(FarmMixin, viewsets.ModelViewSet):
         notes = request.data.get("notes", "")
 
         try:
-            quantity = Decimal(str(request.data.get("quantity", 0)))
-            unit_price = Decimal(str(request.data.get("unit_price", 0)))
+            # 1. Capture the raw input quantities from the modal (e.g., 1 bag, R500 per bag)
+            input_quantity = Decimal(str(request.data.get("quantity", 0)))
+            input_unit_price = Decimal(str(request.data.get("unit_price", 0)))
             
-            if quantity <= 0 or unit_price <= 0:
+            if input_quantity <= 0 or input_unit_price <= 0:
                 return Response({"error": "Quantity and unit price must be greater than zero"}, status=400)
                 
-            total_cost = quantity * unit_price
+            # The exact total money spent out of pocket stays completely absolute
+            total_cost = input_quantity * input_unit_price
+            
+            # 2. Get the physical mass conversion factor (e.g., 25kg or 50kg per bag)
+            # Defaults to 1 if you are tracking standalone raw items directly by the KG
+            weight_per_pack = Decimal(str(request.data.get("weight_per_pack", 1)))
+            
+            # 3. Normalize into absolute systemic KG values
+            actual_kg_added = input_quantity * weight_per_pack
+            actual_price_per_kg = total_cost / actual_kg_added
+
         except (ValueError, TypeError, InvalidOperation):
             return Response({"error": "Invalid numeric values supplied"}, status=400)
 
         with transaction.atomic():
-            # 1. Fetch or create the inventory stock profile
             item, created = InventoryItem.objects.get_or_create(
                 farm=farm,
                 name=name.upper(),
                 defaults={
                     "current_level": Decimal("0.00"),
-                    "cost_per_unit": Decimal("0.00")
+                    "cost_per_unit": Decimal("0.00"),
+                    "unit_of_measure": "KG"  # Keeping your underlying metric baseline uniform
                 }
             )
 
-            # 2. Compute Weighted Moving Average Cost before updating current stock levels
+            # 4. Compute Weighted Moving Average Cost using baseline KGs
             old_qty = item.current_level
             old_cost = item.cost_per_unit
-            new_qty = old_qty + quantity
+            new_qty = old_qty + actual_kg_added
 
             if old_qty > 0:
-                # WAC Formula: ((Old Qty * Old Cost) + (New Qty * New Cost)) / Total Qty
+                # WAC Formula based uniformly on total mass metrics
                 calculated_unit_cost = ((old_qty * old_cost) + total_cost) / new_qty
                 item.cost_per_unit = calculated_unit_cost.quantize(Decimal("0.01"))
             else:
-                # If stock was completely flat or first time entry, use current unit price
-                item.cost_per_unit = unit_price
+                # If stock was dead empty, the asset value matches this exact run's real cost per KG
+                item.cost_per_unit = actual_price_per_kg.quantize(Decimal("0.01"))
 
             item.current_level = new_qty
             item.save()
 
-            # 3. Create tracking verification log
+            # 5. Track the actual change context safely in systemic logs
             StockLog.objects.create(
                 item=item,
                 action="add",
-                quantity_changed=quantity,
-                unit_price_at_time=unit_price
+                quantity_changed=actual_kg_added,
+                unit_price_at_time=actual_price_per_kg
             )
 
-            # 4. Correctly commit entry into historical InventoryPurchase ledger
             supplier_obj = None
             if supplier_id:
                 supplier_obj = Supplier.objects.filter(id=supplier_id, farm=farm).first()
 
+            # 6. Keep your comprehensive historical invoice log clean
             InventoryPurchase.objects.create(
                 farm=farm,
                 supplier=supplier_obj,
                 inventory_item=item,
-                quantity=quantity,
-                unit_price=unit_price,
+                quantity=actual_kg_added,
+                unit_price=actual_price_per_kg,
                 total_cost=total_cost,
-                notes=notes
+                notes=f"Logged as {input_quantity} bags at R{input_unit_price}/bag. {notes}".strip()
             )
 
         return Response({
-            "message": "Stock purchase logged and financial ledger updated successfully",
+            "message": "Stock purchase logged and normalized to KG successfully",
             "item": item.name,
-            "new_level": float(item.current_level),
-            "updated_weighted_cost": float(item.cost_per_unit)
+            "added_kg": float(actual_kg_added),
+            "new_level_kg": float(item.current_level),
+            "updated_weighted_cost_per_kg": float(item.cost_per_unit)
         }, status=status.HTTP_201_CREATED)
-
 
 # -------------------------------------------------
 # SUPPLIER
