@@ -18,7 +18,6 @@ export default function Inventory() {
   const [modalOpen, setModalOpen] = useState(false);
 
   const [selectedItem, setSelectedItem] = useState(null);
-
   const [error, setError] = useState('');
 
   /* =========================================================
@@ -70,7 +69,7 @@ export default function Inventory() {
   }, [items]);
 
   /* =========================================================
-     OPEN USE STOCK MODAL (SAFE MAPPING)
+     OPEN MODAL (SAFE MAPPING)
   ========================================================= */
   const openUseStockModal = (item) => {
     setSelectedItem({
@@ -96,14 +95,10 @@ export default function Inventory() {
           <button
             onClick={() => setModalOpen(true)}
             className="
-              bg-emerald-500
-              hover:bg-emerald-400
+              bg-emerald-500 hover:bg-emerald-400
               px-5 py-3 sm:px-6 sm:py-4
               rounded-2xl
-              text-black
-              font-black
-              uppercase
-              tracking-widest
+              text-black font-black uppercase tracking-widest
               flex items-center justify-center gap-2
               w-full sm:w-auto
             "
@@ -121,7 +116,7 @@ export default function Inventory() {
         )}
 
         {/* METRICS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
           <Metric
             title="Total Inventory"
             value={`${metrics.totalKg.toLocaleString()} KG`}
@@ -129,9 +124,7 @@ export default function Inventory() {
           />
           <Metric
             title="Inventory Value"
-            value={`R ${metrics.value.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-            })}`}
+            value={`R ${metrics.value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
             icon={<Package />}
           />
           <Metric title="Tracked Items" value={metrics.count} icon={<Database />} />
@@ -141,114 +134,80 @@ export default function Inventory() {
         {loading ? (
           <div className="text-center py-20 text-zinc-500 font-black">Loading Inventory...</div>
         ) : items.length === 0 ? (
-          <div className="rounded-3xl border border-white/10 p-10 sm:p-20 text-center text-zinc-500">
+          <div className="rounded-3xl border border-white/10 p-16 text-center text-zinc-500">
             No inventory items found
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {items.map((item) => {
               const stock = Number(item.current_level || 0);
               const unitCost = Number(item.cost_per_unit || 0);
               const min = Number(item.min_stock_level || 10);
 
-              const assetValue = stock * unitCost;
-              const ratio = Math.min((stock / Math.max(min * 3, 1)) * 100, 100);
-
               const low = stock <= min;
+              const ratio = Math.min((stock / Math.max(min * 3, 1)) * 100, 100);
+              const assetValue = stock * unitCost;
 
               return (
                 <div
                   key={item.id}
                   className="
-                    relative overflow-hidden
-                    rounded-2xl sm:rounded-[36px]
                     bg-[#080b10]
-                    border border-white/8
-                    p-5 sm:p-7
-                    transition-all duration-300
-                    hover:border-emerald-500/25
-                    hover:-translate-y-1
+                    border border-white/10
+                    rounded-3xl
+                    p-6
+                    hover:border-emerald-500/20
+                    transition-all
                   "
                 >
-                  {/* TAGS */}
+                  {/* TOP */}
                   <div className="flex justify-between">
-                    <div className="px-2 sm:px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-[9px] font-black tracking-[0.2em] uppercase">
+                    <div className="text-emerald-400 text-[10px] uppercase tracking-widest">
                       {item.category || 'Feed'}
                     </div>
 
                     <div
-                      className={`
-                        px-2 sm:px-3 py-1 rounded-lg text-[9px] font-black tracking-[0.2em] uppercase
-                        ${low ? 'bg-red-500/10 text-red-400' : 'bg-white/5 text-zinc-500'}
-                      `}
+                      className={`text-[10px] uppercase tracking-widest ${low ? 'text-red-400' : 'text-zinc-500'}`}
                     >
-                      {low ? 'Deficit' : 'Nominal'}
+                      {low ? 'Low Stock' : 'Stable'}
                     </div>
                   </div>
 
                   {/* NAME */}
-                  <h2
-                    className={`
-                      mt-6 sm:mt-8 text-2xl sm:text-3xl font-black uppercase
-                      ${low ? 'text-white' : 'text-emerald-400'}
-                    `}
-                  >
-                    {item.name}
-                  </h2>
+                  <h2 className="mt-6 text-2xl font-black uppercase">{item.name}</h2>
 
                   {/* STOCK */}
-                  <div className="mt-4 sm:mt-6 flex items-end gap-2">
-                    <div className="text-4xl sm:text-5xl font-black">{stock.toLocaleString()}</div>
-                    <div className="text-zinc-500 text-xs sm:text-sm mb-1 sm:mb-2">KG</div>
-                  </div>
-
-                  {/* COST */}
-                  <div className="mt-3 sm:mt-4 text-[10px] uppercase tracking-widest text-zinc-600">
-                    Unit Cost:
-                    <span className="text-zinc-300 ml-2">R {unitCost.toFixed(2)} / KG</span>
-                  </div>
+                  <div className="mt-4 text-4xl font-black">{stock.toLocaleString()} KG</div>
 
                   {/* BAR */}
-                  <div className="mt-5 sm:mt-6">
-                    <div className="h-[7px] sm:h-[8px] rounded-full bg-white/5 overflow-hidden">
-                      <div
-                        className={`
-                          h-full rounded-full
-                          ${
-                            low
-                              ? 'bg-gradient-to-r from-red-500 to-orange-400'
-                              : 'bg-gradient-to-r from-emerald-500 to-cyan-400'
-                          }
-                        `}
-                        style={{ width: `${ratio}%` }}
-                      />
-                    </div>
+                  <div className="mt-5 h-2 bg-white/5 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${low ? 'bg-red-500' : 'bg-emerald-500'}`}
+                      style={{ width: `${ratio}%` }}
+                    />
                   </div>
 
-                  {/* FOOTER */}
-                  <div className="mt-6 sm:mt-8 rounded-2xl bg-black/30 border border-white/5 p-4 flex justify-between items-center gap-3">
-                    <div>
-                      <div className="text-[9px] uppercase text-zinc-500">Asset Value</div>
-
-                      <div className="font-black text-white text-sm sm:text-base">
-                        R{' '}
-                        {assetValue.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                        })}
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => openUseStockModal(item)}
-                      className={`
-                        px-4 sm:px-5 py-2 sm:py-3 rounded-xl font-black uppercase text-[10px]
-                        whitespace-nowrap
-                        ${low ? 'bg-emerald-500 text-black' : 'bg-white/5 text-zinc-400'}
-                      `}
-                    >
-                      {low ? 'Reorder' : 'Use Stock'}
-                    </button>
+                  {/* VALUE */}
+                  <div className="mt-6 text-sm text-zinc-400">
+                    Value:{' '}
+                    <span className="text-white font-bold">
+                      R {assetValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
                   </div>
+
+                  {/* BUTTON (FIXED ON ALL CARDS) */}
+                  <button
+                    onClick={() => openUseStockModal(item)}
+                    className="
+                      mt-6 w-full
+                      py-3 rounded-xl
+                      font-black uppercase text-xs
+                      bg-white/5 hover:bg-emerald-500 hover:text-black
+                      transition-all
+                    "
+                  >
+                    Use Stock
+                  </button>
                 </div>
               );
             })}
@@ -278,14 +237,14 @@ export default function Inventory() {
 }
 
 /* =========================================================
-   COMPONENTS
+   METRIC
 ========================================================= */
 function Metric({ title, value, icon }) {
   return (
-    <div className="bg-[#0d0f12] rounded-[28px] border border-white/10 p-5 sm:p-6">
-      <div className="text-emerald-400 mb-3 sm:mb-4">{icon}</div>
-      <div className="text-zinc-500 text-xs uppercase">{title}</div>
-      <div className="text-2xl sm:text-3xl font-black mt-2">{value}</div>
+    <div className="bg-[#0d0f12] border border-white/10 rounded-2xl p-5">
+      <div className="text-emerald-400 mb-2">{icon}</div>
+      <div className="text-xs text-zinc-500 uppercase">{title}</div>
+      <div className="text-2xl font-black mt-2">{value}</div>
     </div>
   );
 }
