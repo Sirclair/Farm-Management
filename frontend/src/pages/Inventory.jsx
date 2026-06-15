@@ -1,20 +1,10 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import api from '../api/axios';
+
 import MainLayout from '../layouts/MainLayout';
+import AddStockModal from '../components/AddStockModal';
 
-import { Package, Plus, AlertTriangle, X, Database, Scale } from 'lucide-react';
-
-/* =========================================================
-   DEFAULT PURCHASE FORM
-========================================================= */
-const EMPTY_FORM = {
-  name: '',
-  quantity: '1',
-  unit_price: '',
-  intake_unit: 'BAGS',
-  weight_per_pack: '50',
-  notes: '',
-};
+import { Package, Plus, Database, Scale, ShieldAlert } from 'lucide-react';
 
 /* =========================================================
    INVENTORY PAGE
@@ -27,19 +17,15 @@ export default function Inventory() {
 
   const [modalOpen, setModalOpen] = useState(false);
 
-  const [form, setForm] = useState(EMPTY_FORM);
-
-  const [submitLoading, setSubmitLoading] = useState(false);
-
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   /* =========================================================
-     FETCH INVENTORY ONLY
+     FETCH INVENTORY
   ========================================================= */
   const fetchInventory = useCallback(async () => {
     try {
       setLoading(true);
+      setError('');
 
       const [stockRes, historyRes] = await Promise.all([
         api.get('/api/inventory/items/'),
@@ -53,7 +39,7 @@ export default function Inventory() {
       setItems(Array.isArray(stock) ? stock : []);
       setPurchaseHistory(Array.isArray(purchases) ? purchases : []);
     } catch (err) {
-      console.error('Inventory load failed', err);
+      console.error(err);
 
       setError(err?.response?.data?.error || 'Failed loading inventory');
     } finally {
@@ -66,194 +52,217 @@ export default function Inventory() {
   }, [fetchInventory]);
 
   /* =========================================================
-     INPUT HANDLER
-  ========================================================= */
-  const updateForm = (e) => {
-    setForm((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
-  };
-
-  /* =========================================================
-     RESET
-  ========================================================= */
-  const resetForm = () => {
-    setForm(EMPTY_FORM);
-  };
-
-  /* =========================================================
-     PURCHASE STOCK
-  ========================================================= */
-  const submitPurchase = async () => {
-    try {
-      setError('');
-      setSuccess('');
-
-      if (!form.name.trim()) {
-        throw new Error('Item name required');
-      }
-
-      if (Number(form.quantity) <= 0) {
-        throw new Error('Quantity must be above zero');
-      }
-
-      if (Number(form.unit_price) <= 0) {
-        throw new Error('Unit price required');
-      }
-
-      if (form.intake_unit === 'BAGS' && Number(form.weight_per_pack) <= 0) {
-        throw new Error('Weight per bag must be greater than zero');
-      }
-
-      setSubmitLoading(true);
-
-      const payload = {
-        name: form.name,
-
-        quantity: Number(form.quantity),
-
-        unit_price: Number(form.unit_price),
-
-        weight_per_pack: form.intake_unit === 'BAGS' ? Number(form.weight_per_pack) : 1,
-
-        notes: form.notes,
-      };
-
-      console.log('PURCHASE PAYLOAD', payload);
-
-      const res = await api.post('/api/inventory/items/purchase/', payload);
-
-      console.log('PURCHASE RESPONSE', res.data);
-
-      setSuccess(res.data.message);
-
-      await fetchInventory();
-
-      resetForm();
-
-      setTimeout(() => {
-        setModalOpen(false);
-      }, 700);
-    } catch (err) {
-      console.error('Purchase failed', err);
-
-      setError(err?.response?.data?.error || err.message || 'Inventory transaction failed');
-    } finally {
-      setSubmitLoading(false);
-    }
-  };
-
-  /* =========================================================
-     METRICS
+     DASHBOARD METRICS
   ========================================================= */
   const metrics = useMemo(() => {
-    const totalKg = items.reduce((a, b) => a + Number(b.current_level || 0), 0);
+    const totalKg = items.reduce((sum, item) => sum + Number(item.current_level || 0), 0);
 
-    const valuation = items.reduce(
-      (a, b) => a + Number(b.current_level || 0) * Number(b.cost_per_unit || 0),
+    const value = items.reduce(
+      (sum, item) => sum + Number(item.current_level || 0) * Number(item.cost_per_unit || 0),
       0
     );
 
     return {
-      stock: totalKg,
-      value: valuation,
+      totalKg,
+      value,
       count: items.length,
     };
   }, [items]);
 
   return (
     <MainLayout>
-      <div className="space-y-8">
-        <div className="flex justify-between">
+      <div className="min-h-screen bg-[#05070a] text-white">
+        {/* HEADER */}
+        <div className="flex justify-between items-end mb-10">
           <div>
-            <h1 className="text-4xl font-black text-white">Inventory</h1>
+            <h1 className="text-5xl font-black">Inventory</h1>
 
-            <p className="text-zinc-500">Inventory only — isolated from finance</p>
+            <p className="text-zinc-500 uppercase text-xs tracking-[0.25em] mt-2">
+              Central Stockpile Registry
+            </p>
           </div>
 
           <button
             onClick={() => setModalOpen(true)}
-            className="bg-emerald-500 px-6 py-3 rounded-xl font-bold"
+            className="
+              bg-emerald-500
+              hover:bg-emerald-400
+              px-6
+              py-4
+              rounded-2xl
+              text-black
+              font-black
+              uppercase
+              tracking-widest
+              flex
+              items-center
+              gap-2
+            "
           >
             <Plus size={18} />
+            Add Stock
           </button>
         </div>
 
-        {error && <div className="bg-red-900/30 p-4 rounded-xl">{error}</div>}
+        {/* ERROR */}
+        {error && (
+          <div
+            className="
+              mb-8
+              p-4
+              rounded-2xl
+              border
+              border-red-500/20
+              bg-red-500/10
+              text-red-300
+            "
+          >
+            {error}
+          </div>
+        )}
 
-        <div className="grid grid-cols-3 gap-4">
-          <Metric icon={<Scale />} title="Total KG" value={metrics.stock.toFixed(1)} />
+        {/* METRICS */}
+        <div className="grid md:grid-cols-3 gap-6 mb-10">
+          <Metric
+            title="Total Inventory"
+            value={`${metrics.totalKg.toLocaleString()} KG`}
+            icon={<Scale />}
+          />
 
-          <Metric icon={<Database />} title="Items" value={metrics.count} />
+          <Metric
+            title="Inventory Value"
+            value={`R ${metrics.value.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+            })}`}
+            icon={<Package />}
+          />
 
-          <Metric icon={<Package />} title="Asset Value" value={`R ${metrics.value.toFixed(2)}`} />
+          <Metric title="Tracked Items" value={metrics.count} icon={<Database />} />
         </div>
 
+        {/* ITEMS */}
         {loading ? (
-          <div className="text-white">Loading inventory...</div>
+          <div className="text-center py-20 text-zinc-500 font-black">Loading Inventory...</div>
+        ) : items.length === 0 ? (
+          <div
+            className="
+              rounded-3xl
+              border
+              border-white/10
+              p-20
+              text-center
+              text-zinc-500
+            "
+          >
+            No inventory items found
+          </div>
         ) : (
-          <div className="grid gap-4">
-            {items.map((item) => (
-              <div key={item.id} className="border p-5 rounded-xl">
-                <div className="font-black">{item.name}</div>
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {items.map((item) => {
+              const level = Number(item.current_level);
 
-                <div>Stock: {item.current_level} KG</div>
+              const cost = Number(item.cost_per_unit);
 
-                <div>
-                  Cost: R{item.cost_per_unit}
-                  /KG
+              const value = level * cost;
+
+              const lowStock = level <= Number(item.min_stock_level || 50);
+
+              return (
+                <div
+                  key={item.id}
+                  className="
+                    bg-[#0d0f12]
+                    border
+                    border-white/10
+                    rounded-[32px]
+                    p-6
+                  "
+                >
+                  <div className="flex justify-between">
+                    <div>
+                      <h3 className="text-xl font-black">{item.name}</h3>
+
+                      <div className="text-zinc-500 text-xs">SKU #{item.id}</div>
+                    </div>
+
+                    {lowStock && (
+                      <div
+                        className="
+                          flex
+                          items-center
+                          gap-1
+                          text-amber-400
+                          text-xs
+                        "
+                      >
+                        <ShieldAlert size={14} />
+                        LOW
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-6 space-y-3">
+                    <Row label="Stock" value={`${level.toLocaleString()} KG`} />
+
+                    <Row label="Cost" value={`R ${cost.toFixed(2)}/KG`} />
+
+                    <Row
+                      label="Value"
+                      value={`R ${value.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      })}`}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
-        {/* MODAL */}
-
-        {modalOpen && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center">
-            <div className="bg-zinc-950 p-8 rounded-3xl w-[600px]">
-              <div className="flex justify-between">
-                <h2>Add Stock</h2>
-
-                <button onClick={() => setModalOpen(false)}>
-                  <X />
-                </button>
-              </div>
-
-              <div className="space-y-4 mt-5">
-                <input name="name" value={form.name} onChange={updateForm} placeholder="Item" />
-
-                <input name="quantity" value={form.quantity} onChange={updateForm} type="number" />
-
-                <input
-                  name="unit_price"
-                  value={form.unit_price}
-                  onChange={updateForm}
-                  type="number"
-                />
-
-                <button disabled={submitLoading} onClick={submitPurchase}>
-                  {submitLoading ? 'Saving...' : 'Purchase'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* ADD STOCK MODAL */}
+        <AddStockModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSuccess={() => {
+            fetchInventory();
+            setModalOpen(false);
+          }}
+        />
       </div>
     </MainLayout>
   );
 }
 
+/* =========================================================
+   COMPONENTS
+========================================================= */
+
 function Metric({ title, value, icon }) {
   return (
-    <div className="border rounded-xl p-5">
-      {icon}
+    <div
+      className="
+        bg-[#0d0f12]
+        rounded-[28px]
+        border
+        border-white/10
+        p-6
+      "
+    >
+      <div className="text-emerald-400 mb-4">{icon}</div>
 
-      <div>{title}</div>
+      <div className="text-zinc-500 text-xs uppercase">{title}</div>
 
-      <div>{value}</div>
+      <div className="text-3xl font-black mt-2">{value}</div>
+    </div>
+  );
+}
+
+function Row({ label, value }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-zinc-500 text-sm">{label}</span>
+
+      <span className="font-black">{value}</span>
     </div>
   );
 }
