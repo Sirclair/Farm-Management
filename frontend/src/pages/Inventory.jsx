@@ -28,8 +28,8 @@ export default function Inventory() {
       setError('');
 
       const [stockRes, historyRes] = await Promise.all([
-        api.get('/api/inventory/items/'),
-        api.get('/api/inventory/purchases/'),
+        api.get('/api/my-farm/inventory/items/'),
+        api.get('/api/my-farm/inventory/purchases/'),
       ]);
 
       const stock = stockRes.data?.results || stockRes.data || [];
