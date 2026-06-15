@@ -7,9 +7,6 @@ import UseStockModal from '../components/UseStockModal';
 
 import { Package, Plus, Database, Scale } from 'lucide-react';
 
-/* =========================================================
-   INVENTORY PAGE
-========================================================= */
 export default function Inventory() {
   const [items, setItems] = useState([]);
   const [purchaseHistory, setPurchaseHistory] = useState([]);
@@ -20,9 +17,7 @@ export default function Inventory() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [error, setError] = useState('');
 
-  /* =========================================================
-     FETCH INVENTORY
-  ========================================================= */
+  /* ================= FETCH ================= */
   const fetchInventory = useCallback(async () => {
     try {
       setLoading(true);
@@ -33,13 +28,9 @@ export default function Inventory() {
         api.get('/api/my-farm/inventory/purchases/'),
       ]);
 
-      const stock = stockRes.data?.results || stockRes.data || [];
-      const purchases = historyRes.data?.results || historyRes.data || [];
-
-      setItems(Array.isArray(stock) ? stock : []);
-      setPurchaseHistory(Array.isArray(purchases) ? purchases : []);
+      setItems(stockRes.data?.results || stockRes.data || []);
+      setPurchaseHistory(historyRes.data?.results || historyRes.data || []);
     } catch (err) {
-      console.error(err);
       setError(err?.response?.data?.error || 'Failed loading inventory');
     } finally {
       setLoading(false);
@@ -50,36 +41,34 @@ export default function Inventory() {
     fetchInventory();
   }, [fetchInventory]);
 
-  /* =========================================================
-     METRICS
-  ========================================================= */
+  /* ================= METRICS ================= */
   const metrics = useMemo(() => {
-    const totalKg = items.reduce((sum, item) => sum + Number(item.current_level || 0), 0);
+    const total = items.reduce((sum, i) => sum + Number(i.current_level_kg || 0), 0);
 
     const value = items.reduce(
-      (sum, item) => sum + Number(item.current_level || 0) * Number(item.cost_per_unit || 0),
+      (sum, i) =>
+        sum + Number(i.current_level_kg || 0) * Number(i.cost_per_kg || i.cost_per_unit || 0),
       0
     );
 
     return {
-      totalKg,
+      total,
       value,
       count: items.length,
     };
   }, [items]);
 
-  /* =========================================================
-     OPEN MODAL (SAFE MAPPING)
-  ========================================================= */
+  /* ================= OPEN MODAL ================= */
   const openUseStockModal = (item) => {
     setSelectedItem({
       id: item.id,
       name: item.name,
-      currentLevel: item.current_level,
-      unitOfMeasure: item.unit_of_measure || 'KG',
+      currentLevel: item.current_level_kg || item.current_level,
+      unit: item.display_unit || 'KG',
     });
   };
 
+  /* ================= UI ================= */
   return (
     <MainLayout>
       <div className="min-h-screen bg-[#05070a] text-white p-4 sm:p-6">
@@ -94,14 +83,7 @@ export default function Inventory() {
 
           <button
             onClick={() => setModalOpen(true)}
-            className="
-              bg-emerald-500 hover:bg-emerald-400
-              px-5 py-3 sm:px-6 sm:py-4
-              rounded-2xl
-              text-black font-black uppercase tracking-widest
-              flex items-center justify-center gap-2
-              w-full sm:w-auto
-            "
+            className="bg-emerald-500 hover:bg-emerald-400 px-5 py-3 sm:px-6 sm:py-4 rounded-2xl text-black font-black uppercase tracking-widest flex gap-2 w-full sm:w-auto"
           >
             <Plus size={18} />
             Add Stock
@@ -117,14 +99,10 @@ export default function Inventory() {
 
         {/* METRICS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
-          <Metric
-            title="Total Inventory"
-            value={`${metrics.totalKg.toLocaleString()} KG`}
-            icon={<Scale />}
-          />
+          <Metric title="Total Stock" value={`${metrics.total.toFixed(2)} KG`} icon={<Scale />} />
           <Metric
             title="Inventory Value"
-            value={`R ${metrics.value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+            value={`R ${metrics.value.toFixed(2)}`}
             icon={<Package />}
           />
           <Metric title="Tracked Items" value={metrics.count} icon={<Database />} />
@@ -140,30 +118,24 @@ export default function Inventory() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {items.map((item) => {
-              const stock = Number(item.current_level || 0);
-              const unitCost = Number(item.cost_per_unit || 0);
-              const min = Number(item.min_stock_level || 10);
+              const stock = Number(item.current_level_kg || item.current_level || 0);
+              const unit = item.display_unit || 'KG';
+              const min = Number(item.min_stock_level_kg || item.min_stock_level || 10);
 
               const low = stock <= min;
               const ratio = Math.min((stock / Math.max(min * 3, 1)) * 100, 100);
-              const assetValue = stock * unitCost;
+              const cost = Number(item.cost_per_kg || item.cost_per_unit || 0);
+              const value = stock * cost;
 
               return (
                 <div
                   key={item.id}
-                  className="
-                    bg-[#080b10]
-                    border border-white/10
-                    rounded-3xl
-                    p-6
-                    hover:border-emerald-500/20
-                    transition-all
-                  "
+                  className="bg-[#080b10] border border-white/10 rounded-3xl p-6 hover:border-emerald-500/20 transition-all"
                 >
                   {/* TOP */}
                   <div className="flex justify-between">
                     <div className="text-emerald-400 text-[10px] uppercase tracking-widest">
-                      {item.category || 'Feed'}
+                      {item.category}
                     </div>
 
                     <div
@@ -176,8 +148,10 @@ export default function Inventory() {
                   {/* NAME */}
                   <h2 className="mt-6 text-2xl font-black uppercase">{item.name}</h2>
 
-                  {/* STOCK */}
-                  <div className="mt-4 text-4xl font-black">{stock.toLocaleString()} KG</div>
+                  {/* STOCK (FIXED UNIT DISPLAY) */}
+                  <div className="mt-4 text-4xl font-black">
+                    {stock.toFixed(2)} <span className="text-sm text-zinc-400">{unit}</span>
+                  </div>
 
                   {/* BAR */}
                   <div className="mt-5 h-2 bg-white/5 rounded-full overflow-hidden">
@@ -189,22 +163,13 @@ export default function Inventory() {
 
                   {/* VALUE */}
                   <div className="mt-6 text-sm text-zinc-400">
-                    Value:{' '}
-                    <span className="text-white font-bold">
-                      R {assetValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </span>
+                    Value: <span className="text-white font-bold">R {value.toFixed(2)}</span>
                   </div>
 
-                  {/* BUTTON (FIXED ON ALL CARDS) */}
+                  {/* BUTTON */}
                   <button
                     onClick={() => openUseStockModal(item)}
-                    className="
-                      mt-6 w-full
-                      py-3 rounded-xl
-                      font-black uppercase text-xs
-                      bg-white/5 hover:bg-emerald-500 hover:text-black
-                      transition-all
-                    "
+                    className="mt-6 w-full py-3 rounded-xl font-black uppercase text-xs bg-white/5 hover:bg-emerald-500 hover:text-black"
                   >
                     Use Stock
                   </button>
@@ -214,17 +179,13 @@ export default function Inventory() {
           </div>
         )}
 
-        {/* ADD STOCK MODAL */}
+        {/* MODALS */}
         <AddStockModal
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
-          onSuccess={() => {
-            fetchInventory();
-            setModalOpen(false);
-          }}
+          onSuccess={fetchInventory}
         />
 
-        {/* USE STOCK MODAL */}
         <UseStockModal
           isOpen={!!selectedItem}
           selectedItem={selectedItem}
@@ -236,9 +197,7 @@ export default function Inventory() {
   );
 }
 
-/* =========================================================
-   METRIC
-========================================================= */
+/* ================= METRIC ================= */
 function Metric({ title, value, icon }) {
   return (
     <div className="bg-[#0d0f12] border border-white/10 rounded-2xl p-5">

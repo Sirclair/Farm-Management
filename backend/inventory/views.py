@@ -1,9 +1,11 @@
 from decimal import Decimal, InvalidOperation
 from django.db import transaction
+
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
 from accounts.utils import get_user_farm
 
 from .models import (
@@ -23,13 +25,15 @@ from .serializers import (
 
 
 # -------------------------------------------------
-# SAFE BASE MIXIN
+# SAFE BASE
 # -------------------------------------------------
 class FarmMixin:
+
     def get_farm(self):
         return get_user_farm(self.request.user)
 
     def get_queryset(self):
+
         if (
             getattr(self, "swagger_fake_view", False)
             or not self.request.user.is_authenticated
@@ -41,164 +45,329 @@ class FarmMixin:
         if not farm:
             return self.queryset.model.objects.none()
 
-        return self.queryset.model.objects.filter(farm=farm)
+        return self.queryset.model.objects.filter(
+            farm=farm
+        )
 
 
 # -------------------------------------------------
-# INVENTORY ITEM
+# INVENTORY
 # -------------------------------------------------
-class InventoryItemViewSet(FarmMixin, viewsets.ModelViewSet):
+class InventoryItemViewSet(
+    FarmMixin,
+    viewsets.ModelViewSet,
+):
+
     serializer_class = InventoryItemSerializer
     queryset = InventoryItem.objects.all()
-    permission_classes = [IsAuthenticated]
+
+    permission_classes = [
+        IsAuthenticated
+    ]
 
     def perform_create(self, serializer):
-        serializer.save(farm=self.get_farm())
+        serializer.save(
+            farm=self.get_farm()
+        )
 
-    # ----------------------------------------------
-    # PURCHASE STOCK
-    # ----------------------------------------------
-    @action(detail=False, methods=["post"])
+    # ==========================================
+    # PURCHASE
+    # ==========================================
+    @action(
+        detail=False,
+        methods=["post"],
+    )
     def purchase(self, request):
 
         farm = self.get_farm()
 
         if not farm:
             return Response(
-                {"error": "No farm context"},
+                {
+                    "error":
+                    "No farm context"
+                },
                 status=400,
             )
-
-        name = request.data.get("name", "").strip()
-
-        if not name:
-            return Response(
-                {"error": "Name required"},
-                status=400,
-            )
-
-        supplier_id = request.data.get("supplier_id")
-        notes = request.data.get("notes", "")
 
         try:
-            input_quantity = Decimal(
-                str(request.data.get("quantity", 0))
-            )
 
-            input_unit_price = Decimal(
-                str(request.data.get("unit_price", 0))
-            )
-
-            if input_quantity <= 0 or input_unit_price <= 0:
-                return Response(
-                    {
-                        "error":
-                        "Quantity and unit price must be greater than zero"
-                    },
-                    status=400,
+            name = (
+                request.data
+                .get(
+                    "name",
+                    "",
                 )
-
-            total_cost = input_quantity * input_unit_price
-
-            weight_per_pack = Decimal(
-                str(request.data.get("weight_per_pack", 1))
+                .upper()
+                .strip()
             )
 
-            actual_kg_added = input_quantity * weight_per_pack
+            if not name:
+                raise ValueError()
 
-            actual_price_per_kg = (
-                total_cost / actual_kg_added
+            purchase_qty = Decimal(
+                str(
+                    request.data.get(
+                        "quantity",
+                        0,
+                    )
+                )
             )
 
-        except (ValueError, TypeError, InvalidOperation):
+            unit_price = Decimal(
+                str(
+                    request.data.get(
+                        "unit_price",
+                        0,
+                    )
+                )
+            )
+
+            conversion_factor = Decimal(
+                str(
+                    request.data.get(
+                        "conversion_factor",
+                        1,
+                    )
+                )
+            )
+
+            inventory_unit = (
+                request.data.get(
+                    "inventory_unit",
+                    "KG",
+                )
+                .upper()
+            )
+
+            purchase_unit = (
+                request.data.get(
+                    "purchase_unit",
+                    inventory_unit,
+                )
+                .upper()
+            )
+
+            category = (
+                request.data.get(
+                    "category",
+                    "feed",
+                )
+            )
+
+            notes = (
+                request.data.get(
+                    "notes",
+                    ""
+                )
+            )
+
+            supplier_id = (
+                request.data.get(
+                    "supplier_id"
+                )
+            )
+
+            if (
+                purchase_qty <= 0
+                or unit_price <= 0
+                or conversion_factor <= 0
+            ):
+                raise ValueError()
+
+        except (
+            ValueError,
+            TypeError,
+            InvalidOperation,
+        ):
             return Response(
-                {"error": "Invalid numeric values"},
+                {
+                    "error":
+                    "Invalid purchase data"
+                },
                 status=400,
             )
 
         with transaction.atomic():
 
+            actual_quantity = (
+                purchase_qty *
+                conversion_factor
+            )
+
+            total_cost = (
+                purchase_qty *
+                unit_price
+            )
+
+            cost_per_unit = (
+                total_cost /
+                actual_quantity
+            )
+
             item, created = (
                 InventoryItem.objects.get_or_create(
                     farm=farm,
-                    name=name.upper(),
+                    name=name,
                     defaults={
-                        "current_level": Decimal("0.00"),
-                        "cost_per_unit": Decimal("0.00"),
-                        "unit_of_measure": "KG",
+                        "category":
+                        category,
+
+                        "inventory_unit":
+                        inventory_unit,
+
+                        "purchase_unit":
+                        purchase_unit,
+
+                        "conversion_factor":
+                        conversion_factor,
+
+                        "current_level":
+                        Decimal("0"),
+
+                        "cost_per_unit":
+                        Decimal("0"),
                     },
                 )
             )
 
-            old_qty = item.current_level
-            old_cost = item.cost_per_unit
+            old_qty = (
+                item.current_level
+            )
 
-            new_qty = old_qty + actual_kg_added
+            old_cost = (
+                item.cost_per_unit
+            )
+
+            new_qty = (
+                old_qty +
+                actual_quantity
+            )
 
             if old_qty > 0:
+
                 item.cost_per_unit = (
                     (
-                        (old_qty * old_cost)
-                        + total_cost
+                        (
+                            old_qty *
+                            old_cost
+                        )
+                        +
+                        total_cost
                     )
-                    / new_qty
-                ).quantize(Decimal("0.01"))
+                    /
+                    new_qty
+                ).quantize(
+                    Decimal(
+                        "0.01"
+                    )
+                )
 
             else:
-                item.cost_per_unit = (
-                    actual_price_per_kg
-                ).quantize(Decimal("0.01"))
 
-            item.current_level = new_qty
+                item.cost_per_unit = (
+                    cost_per_unit
+                ).quantize(
+                    Decimal(
+                        "0.01"
+                    )
+                )
+
+            item.current_level = (
+                new_qty
+            )
+
+            item.inventory_unit = (
+                inventory_unit
+            )
+
+            item.purchase_unit = (
+                purchase_unit
+            )
+
+            item.conversion_factor = (
+                conversion_factor
+            )
+
             item.save()
 
             StockLog.objects.create(
                 item=item,
+
                 action="add",
-                quantity_changed=actual_kg_added,
-                unit_price_at_time=actual_price_per_kg,
+
+                quantity_changed=(
+                    actual_quantity
+                ),
+
+                unit_price_at_time=(
+                    item.cost_per_unit
+                ),
             )
 
-            supplier_obj = None
+            supplier = None
 
             if supplier_id:
-                supplier_obj = (
-                    Supplier.objects.filter(
+                supplier = (
+                    Supplier.objects
+                    .filter(
                         id=supplier_id,
                         farm=farm,
-                    ).first()
+                    )
+                    .first()
                 )
 
             InventoryPurchase.objects.create(
                 farm=farm,
-                supplier=supplier_obj,
+
+                supplier=supplier,
+
                 inventory_item=item,
-                quantity=actual_kg_added,
-                unit_price=actual_price_per_kg,
+
+                quantity=actual_quantity,
+
+                unit_price=item.cost_per_unit,
+
                 total_cost=total_cost,
+
                 notes=notes,
             )
 
         return Response(
             {
-                "message": "Purchase successful"
+                "message":
+                "Inventory recorded",
+
+                "item":
+                item.name,
+
+                "stock":
+                f"{item.current_level} "
+                f"{item.inventory_unit}",
             },
             status=201,
         )
 
-    # ----------------------------------------------
+    # ==========================================
     # USE STOCK
-    # ----------------------------------------------
+    # ==========================================
     @action(
         detail=True,
         methods=["post"],
         url_path="log-usage",
     )
-    def log_usage(self, request, pk=None):
+    def log_usage(
+        self,
+        request,
+        pk=None,
+    ):
 
-        item = self.get_object()
+        item = (
+            self.get_object()
+        )
 
         try:
+
             quantity = Decimal(
                 str(
                     request.data.get(
@@ -208,49 +377,68 @@ class InventoryItemViewSet(FarmMixin, viewsets.ModelViewSet):
                 )
             )
 
-        except InvalidOperation:
-            return Response(
-                {"error": "Invalid quantity"},
-                status=400,
-            )
+            if quantity <= 0:
+                raise ValueError()
 
-        if quantity <= 0:
+        except (
+            ValueError,
+            InvalidOperation,
+        ):
+
             return Response(
                 {
                     "error":
-                    "Quantity must be greater than zero"
+                    "Invalid quantity"
                 },
                 status=400,
             )
 
-        if quantity > item.current_level:
+        if (
+            quantity >
+            item.current_level
+        ):
+
             return Response(
                 {
                     "error":
-                    f"Insufficient stock. Available: {item.current_level}"
+                    f"Only "
+                    f"{item.current_level} "
+                    f"{item.inventory_unit} "
+                    f"remaining"
                 },
                 status=400,
             )
 
         with transaction.atomic():
 
-            item.current_level -= quantity
+            item.current_level -= (
+                quantity
+            )
 
             item.save()
 
             StockLog.objects.create(
                 item=item,
+
                 action="use",
-                quantity_changed=quantity,
-                unit_price_at_time=item.cost_per_unit,
+
+                quantity_changed=(
+                    quantity
+                ),
+
+                unit_price_at_time=(
+                    item.cost_per_unit
+                ),
             )
 
         return Response(
             {
                 "message":
-                "Stock usage logged",
+                "Usage recorded",
+
                 "remaining":
-                float(item.current_level),
+                f"{item.current_level} "
+                f"{item.inventory_unit}",
             }
         )
 
@@ -258,19 +446,41 @@ class InventoryItemViewSet(FarmMixin, viewsets.ModelViewSet):
 # -------------------------------------------------
 # SUPPLIER
 # -------------------------------------------------
-class SupplierViewSet(FarmMixin, viewsets.ModelViewSet):
-    serializer_class = SupplierSerializer
-    queryset = Supplier.objects.all()
-    permission_classes = [IsAuthenticated]
+class SupplierViewSet(
+    FarmMixin,
+    viewsets.ModelViewSet,
+):
+    serializer_class = (
+        SupplierSerializer
+    )
+
+    queryset = (
+        Supplier.objects.all()
+    )
+
+    permission_classes = [
+        IsAuthenticated
+    ]
 
 
 # -------------------------------------------------
 # PURCHASE ORDER
 # -------------------------------------------------
-class PurchaseOrderViewSet(FarmMixin, viewsets.ModelViewSet):
-    serializer_class = PurchaseOrderSerializer
-    queryset = PurchaseOrder.objects.all()
-    permission_classes = [IsAuthenticated]
+class PurchaseOrderViewSet(
+    FarmMixin,
+    viewsets.ModelViewSet,
+):
+    serializer_class = (
+        PurchaseOrderSerializer
+    )
+
+    queryset = (
+        PurchaseOrder.objects.all()
+    )
+
+    permission_classes = [
+        IsAuthenticated
+    ]
 
 
 # -------------------------------------------------
@@ -280,6 +490,14 @@ class InventoryPurchaseViewSet(
     FarmMixin,
     viewsets.ReadOnlyModelViewSet,
 ):
-    serializer_class = InventoryPurchaseSerializer
-    queryset = InventoryPurchase.objects.all()
-    permission_classes = [IsAuthenticated]
+    serializer_class = (
+        InventoryPurchaseSerializer
+    )
+
+    queryset = (
+        InventoryPurchase.objects.all()
+    )
+
+    permission_classes = [
+        IsAuthenticated
+    ]
