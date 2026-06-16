@@ -161,6 +161,25 @@ export default function Inventory() {
               const min = Number(item.min_stock_level);
               const low = stock <= min;
 
+              // -----------------------------------------------------------
+              // NEW VISUAL TRACKING BAR LOGIC
+              // Since the API doesn't provide a 'max_stock', we establish a meaningful upper bound
+              // for visual comparison based logically on the user-defined min alert level.
+              // We'll visualize the current stock relative to 3x the minimum alert level.
+              // -----------------------------------------------------------
+              const visualUpperBound = Math.max(min * 3, stock);
+              const percentageFilled = visualUpperBound > 0 ? (stock / visualUpperBound) * 100 : 0;
+              const boundedFill = Math.min(Math.max(percentageFilled, 0), 100); // Visual sanity clamp
+
+              // Define tracking bar colors based on danger thresholds
+              let trackingBarColor = 'bg-emerald-500'; // Default Healthy
+              if (low) {
+                trackingBarColor = 'bg-red-500 shadow-lg shadow-red-500/20'; // Critical
+              } else if (stock <= min * 1.5) {
+                trackingBarColor = 'bg-amber-500'; // Getting Low warning buffer (within 50% above min)
+              }
+              // -----------------------------------------------------------
+
               return (
                 <div
                   key={item.id}
@@ -174,8 +193,12 @@ export default function Inventory() {
                       </span>
 
                       {low ? (
-                        <span className="flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider animate-pulse">
+                        <span className="flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-md bg-red-500/10 text-red-400 border border-red-500/20 uppercase tracking-wider animate-pulse">
                           <AlertTriangle size={11} /> Low Stock
+                        </span>
+                      ) : stock <= min * 1.5 ? (
+                        <span className="flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-wider">
+                          <AlertTriangle size={11} /> Buffer
                         </span>
                       ) : (
                         <span className="flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
@@ -198,6 +221,17 @@ export default function Inventory() {
                         {item.inventory_unit}
                       </span>
                     </div>
+
+                    {/* --- NEW VISUAL TRACKING BAR INSERTION --- */}
+                    <div className="mt-6">
+                      <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ease-out ${trackingBarColor}`}
+                          style={{ width: `${boundedFill}%` }}
+                        />
+                      </div>
+                    </div>
+                    {/* ------------------------------------------- */}
                   </div>
 
                   {/* BOTTOM ACTION LAYOUT BLOCK */}
