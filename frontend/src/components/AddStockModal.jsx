@@ -1,44 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import api from '../api/axios';
-import { X, Loader2, AlertCircle, CheckCircle2, Package2 } from 'lucide-react';
 
-const UNIT_PRESETS = {
-  feed: {
-    inventory: 'KG',
-    purchase: 'BAG',
-    factor: '50',
-  },
+import { X, Loader2, AlertCircle, CheckCircle2, Package2, Info, ArrowRight } from 'lucide-react';
 
-  medicine: {
-    inventory: 'G',
-    purchase: 'BOTTLE',
-    factor: '500',
-  },
+const UNITS = ['KG', 'G', 'MG', 'L', 'ML', 'BAG', 'BOTTLE', 'BOX', 'UNIT'];
 
-  sawdust: {
-    inventory: 'BAG',
-    purchase: 'BAG',
-    factor: '1',
-  },
-};
+const CATEGORIES = [
+  'feed',
+  'medicine',
+  'sawdust',
+  'cleaning',
+  'equipment',
+  'packaging',
+  'fuel',
+  'chemicals',
+  'water',
+  'other',
+];
 
 export default function AddStockModal({ isOpen, onClose, onSuccess }) {
   const initial = {
     name: '',
     category: 'feed',
+
     quantity: '',
     costPerUnit: '',
+
+    inventoryUnit: 'KG',
+    purchaseUnit: 'BAG',
+
+    conversionFactor: 1,
+
     minStockLevel: 10,
+
     notes: '',
   };
 
   const [formData, setFormData] = useState(initial);
-
-  const [unitMode, setUnitMode] = useState('KG');
-
-  const [purchaseMode, setPurchaseMode] = useState('BAG');
-
-  const [conversionFactor, setConversionFactor] = useState('50');
 
   const [loading, setLoading] = useState(false);
 
@@ -46,39 +44,26 @@ export default function AddStockModal({ isOpen, onClose, onSuccess }) {
 
   const [success, setSuccess] = useState('');
 
-  useEffect(() => {
-    const preset = UNIT_PRESETS[formData.category];
-
-    if (!preset) return;
-
-    setUnitMode(preset.inventory);
-
-    setPurchaseMode(preset.purchase);
-
-    setConversionFactor(preset.factor);
-  }, [formData.category]);
-
   if (!isOpen) return null;
 
-  const handleChange = (e) => {
-    setFormData((p) => ({
-      ...p,
-      [e.target.name]: e.target.value,
+  const update = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
     }));
 
     setError('');
   };
 
-  const reset = () => {
-    setFormData(initial);
+  const quantity = Number(formData.quantity || 0);
 
-    setSuccess('');
-    setError('');
-  };
+  const factor = Number(formData.conversionFactor || 1);
 
-  const handleSubmit = async () => {
+  const preview = quantity * factor;
+
+  const submit = async () => {
     if (!formData.name || !formData.quantity || !formData.costPerUnit) {
-      return setError('Fill all required fields');
+      return setError('Complete required fields');
     }
 
     try {
@@ -89,15 +74,15 @@ export default function AddStockModal({ isOpen, onClose, onSuccess }) {
 
         category: formData.category,
 
-        quantity: Number(formData.quantity),
+        quantity: quantity,
 
         unit_price: Number(formData.costPerUnit),
 
-        inventory_unit: unitMode,
+        inventory_unit: formData.inventoryUnit,
 
-        purchase_unit: purchaseMode,
+        purchase_unit: formData.purchaseUnit,
 
-        conversion_factor: Number(conversionFactor),
+        conversion_factor: factor,
 
         min_stock_level: Number(formData.minStockLevel),
 
@@ -109,102 +94,169 @@ export default function AddStockModal({ isOpen, onClose, onSuccess }) {
       onSuccess?.();
 
       setTimeout(() => {
-        reset();
+        setFormData(initial);
         onClose();
-      }, 1000);
-    } catch (e) {
-      setError(e.response?.data?.error || 'Save failed');
+      }, 1200);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Save failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-      <div className="bg-[#0b0f14] rounded-3xl w-full max-w-2xl">
-        <div className="p-6 border-b border-white/10 flex justify-between">
-          <div className="flex gap-3">
-            <Package2 className="text-emerald-400" />
+    <div className="fixed inset-0 z-50 bg-black/80 overflow-y-auto">
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="w-full max-w-4xl rounded-3xl bg-[#090d12] border border-white/10">
+          {/* HEADER */}
 
-            <h2 className="text-white font-black">Add Stock</h2>
+          <div className="p-7 border-b border-white/10 flex justify-between">
+            <div className="flex gap-4">
+              <Package2 className="text-emerald-400" />
+
+              <div>
+                <h2 className="text-3xl font-black text-white">Add Inventory</h2>
+
+                <p className="text-zinc-500">Record stock purchase and conversion</p>
+              </div>
+            </div>
+
+            <button onClick={onClose}>
+              <X />
+            </button>
           </div>
 
-          <button onClick={onClose}>
-            <X />
-          </button>
-        </div>
+          <div className="p-7 space-y-6">
+            {error && (
+              <div className="bg-red-500/10 p-4 rounded-xl text-red-400 flex gap-2">
+                <AlertCircle />
+                {error}
+              </div>
+            )}
 
-        <div className="p-6 space-y-4">
-          {error && (
-            <div className="text-red-400">
-              <AlertCircle />
-              {error}
+            {success && (
+              <div className="bg-emerald-500/10 p-4 rounded-xl text-emerald-400 flex gap-2">
+                <CheckCircle2 />
+                {success}
+              </div>
+            )}
+
+            <div className="grid md:grid-cols-2 gap-5">
+              <input
+                placeholder="Item Name"
+                value={formData.name}
+                onChange={(e) => update('name', e.target.value)}
+                className="p-4 rounded-xl bg-black"
+              />
+
+              <select
+                value={formData.category}
+                onChange={(e) => update('category', e.target.value)}
+                className="p-4 rounded-xl bg-black"
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
 
-          {success && (
-            <div className="text-emerald-400">
-              <CheckCircle2 />
-              {success}
+            <div className="grid md:grid-cols-2 gap-5">
+              <input
+                type="number"
+                placeholder="Quantity Purchased"
+                value={formData.quantity}
+                onChange={(e) => update('quantity', e.target.value)}
+                className="p-4 rounded-xl bg-black"
+              />
+
+              <input
+                type="number"
+                placeholder="Purchase Price"
+                value={formData.costPerUnit}
+                onChange={(e) => update('costPerUnit', e.target.value)}
+                className="p-4 rounded-xl bg-black"
+              />
             </div>
-          )}
 
-          <input
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="Item"
-            className="w-full p-3 rounded-xl bg-black"
-          />
+            <div className="grid md:grid-cols-3 gap-5">
+              <select
+                value={formData.purchaseUnit}
+                onChange={(e) => update('purchaseUnit', e.target.value)}
+                className="p-4 rounded-xl bg-black"
+              >
+                {UNITS.map((u) => (
+                  <option key={u}>{u}</option>
+                ))}
+              </select>
 
-          <select
-            name="category"
-            value={formData.category}
-            onChange={handleChange}
-            className="w-full p-3 rounded-xl bg-black"
-          >
-            <option value="feed">Feed</option>
-            <option value="medicine">Medicine</option>
-            <option value="sawdust">Sawdust</option>
-          </select>
+              <select
+                value={formData.inventoryUnit}
+                onChange={(e) => update('inventoryUnit', e.target.value)}
+                className="p-4 rounded-xl bg-black"
+              >
+                {UNITS.map((u) => (
+                  <option key={u}>{u}</option>
+                ))}
+              </select>
 
-          <div className="grid grid-cols-2 gap-4">
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Conversion Factor"
+                value={formData.conversionFactor}
+                onChange={(e) => update('conversionFactor', e.target.value)}
+                className="p-4 rounded-xl bg-black"
+              />
+            </div>
+
             <input
               type="number"
-              name="quantity"
-              placeholder="Quantity"
-              value={formData.quantity}
-              onChange={handleChange}
-              className="p-3 bg-black rounded-xl"
+              placeholder="Minimum Stock Alert"
+              value={formData.minStockLevel}
+              onChange={(e) => update('minStockLevel', e.target.value)}
+              className="w-full p-4 rounded-xl bg-black"
             />
 
-            <input
-              type="number"
-              name="costPerUnit"
-              placeholder="Unit Price"
-              value={formData.costPerUnit}
-              onChange={handleChange}
-              className="p-3 bg-black rounded-xl"
+            <textarea
+              rows={4}
+              placeholder="Notes"
+              value={formData.notes}
+              onChange={(e) => update('notes', e.target.value)}
+              className="w-full p-4 rounded-xl bg-black"
             />
+
+            <div className="bg-emerald-500/10 rounded-2xl p-5">
+              <div className="flex items-center gap-3">
+                <Info size={18} />
+                Preview
+              </div>
+
+              <div className="mt-4 text-xl">
+                {quantity} {formData.purchaseUnit}
+                <ArrowRight />
+                {preview} {formData.inventoryUnit}
+              </div>
+            </div>
           </div>
 
-          <div className="p-4 border rounded-xl">
-            Purchase:
-            <strong> {purchaseMode}</strong>→<strong> {unitMode}</strong>
-            <br />
-            Factor:
-            <input value={conversionFactor} onChange={(e) => setConversionFactor(e.target.value)} />
+          <div className="p-6 border-t border-white/10">
+            <button
+              disabled={loading}
+              onClick={submit}
+              className="
+w-full
+bg-emerald-500
+rounded-2xl
+py-4
+text-black
+font-black
+"
+            >
+              {loading ? <Loader2 className="animate-spin mx-auto" /> : 'Record Inventory'}
+            </button>
           </div>
-        </div>
-
-        <div className="p-4">
-          <button
-            disabled={loading}
-            onClick={handleSubmit}
-            className="bg-emerald-500 px-6 py-3 rounded-xl text-black"
-          >
-            {loading ? <Loader2 className="animate-spin" /> : 'Save'}
-          </button>
         </div>
       </div>
     </div>
