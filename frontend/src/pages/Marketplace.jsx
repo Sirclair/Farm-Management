@@ -1,104 +1,247 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api from '../api/axios';
 import MainLayout from '../layouts/MainLayout';
 import { Link } from 'react-router-dom';
-import { Store, MapPin, Scan } from 'lucide-react';
+import { Store, MapPin, Scan, Wifi, WifiOff } from 'lucide-react';
 
 export default function Marketplace() {
   const [farms, setFarms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isLive, setIsLive] = useState(false);
+
+  const wsRef = useRef(null);
+  const intervalRef = useRef(null);
+
+  const endpoint = '/api/explore-farms/explore/';
+
+  // =====================================================
+  // NORMALIZE RESPONSE
+  // =====================================================
+
+  const normalize = (data) => {
+    if (Array.isArray(data)) return data;
+
+    if (Array.isArray(data?.results)) return data.results;
+
+    return [];
+  };
+
+  // =====================================================
+  // FIX MEDIA URL
+  // =====================================================
+
+  const getImageUrl = (image) => {
+    if (!image) return '/placeholder-farm.jpg';
+
+    if (image.startsWith('http')) return image;
+
+    const base = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+
+    return `${base}${image}`;
+  };
+
+  // =====================================================
+  // FETCH FARMS
+  // =====================================================
+
+  const fetchFarms = async () => {
+    try {
+      const res = await api.get(endpoint);
+
+      const farmsData = normalize(res.data);
+
+      const enhanced = farmsData.map((farm) => ({
+        ...farm,
+
+        signal: Math.floor(Math.random() * 30) + 70,
+
+        online: true,
+
+        lastSeen: new Date().toISOString(),
+      }));
+
+      setFarms(enhanced);
+
+      setError(null);
+    } catch (err) {
+      console.error('Marketplace error:', err.response || err);
+
+      setError('Unable to scan farm network');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =====================================================
+  // INITIAL LOAD
+  // =====================================================
 
   useEffect(() => {
-    // 1. Removed hardcoded localhost string to fix Vercel live environment CORS/Network Errors
-    // 2. Pointed to the exact API endpoint structure registered in your Django setup
-    const endpoint = '/api/explore-farms/';
+    fetchFarms();
 
-    api
-      .get(endpoint)
-      .then((res) => {
-        setFarms(res.data || []);
-      })
-      .catch((err) => {
-        console.error('Marketplace Error:', err.response || err);
-      })
-      .finally(() => setLoading(false));
+    intervalRef.current = setInterval(fetchFarms, 15000);
+
+    return () => {
+      clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  // =====================================================
+  // OPTIONAL WS
+  // =====================================================
+
+  useEffect(() => {
+    try {
+      const url = import.meta.env.VITE_WS_URL;
+
+      if (!url) return;
+
+      const ws = new WebSocket(url);
+
+      wsRef.current = ws;
+
+      ws.onopen = () => setIsLive(true);
+
+      ws.onerror = () => setIsLive(false);
+
+      ws.onclose = () => setIsLive(false);
+
+      return () => ws.close();
+    } catch {
+      setIsLive(false);
+    }
   }, []);
 
   return (
     <MainLayout>
-      {/* ========================================================= */}
-      {/* PAGE WRAPPER */}
-      {/* ========================================================= */}
       <div className="max-w-[1600px] mx-auto px-6 py-10 text-white">
-        {/* ========================================================= */}
-        {/* HEADER (SYSTEM SCAN STYLE) */}
-        {/* ========================================================= */}
+        {/* HEADER */}
+
         <div className="mb-12">
           <div className="flex items-center gap-3 text-emerald-400 text-[10px] uppercase tracking-[0.35em] font-black">
             <span className="h-[1px] w-10 bg-emerald-400" />
-            MARKET NODE ACTIVE
+            FARM NETWORK
           </div>
 
-          <h1 className="text-5xl font-black italic uppercase tracking-tighter mt-4">
-            FARM <span className="text-emerald-400">MARKET</span>
+          <h1 className="text-5xl font-black mt-4">
+            LIVE
+            <span className="text-emerald-400"> FARM GRID</span>
           </h1>
 
-          <div className="flex items-center gap-3 mt-3 text-zinc-500 text-[11px] uppercase tracking-widest">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative h-2 w-2 rounded-full bg-emerald-500"></span>
-            </span>
-            SCANNING NETWORK • LIVE FEED
+          <div className="mt-4 flex items-center gap-2 text-[11px] uppercase text-zinc-500">
+            {isLive ? (
+              <>
+                <Wifi size={14} className="text-emerald-400" />
+                LIVE SIGNAL
+              </>
+            ) : (
+              <>
+                <WifiOff size={14} className="text-red-400" />
+                SCAN MODE
+              </>
+            )}
           </div>
         </div>
 
-        {/* ========================================================= */}
-        {/* CONTENT */}
-        {/* ========================================================= */}
+        {/* ERROR */}
+
+        {error && <div className="mb-8 text-red-400">{error}</div>}
+
+        {/* LOADING */}
+
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 text-zinc-500">
-            <Scan className="animate-pulse mb-4" size={28} />
-            <p className="uppercase tracking-[0.3em] text-[11px] font-black">
-              SCANNING FARM NETWORK
-            </p>
+          <div className="py-32 text-center">
+            <Scan size={30} className="animate-pulse mx-auto mb-4" />
+            SCANNING FARMS...
           </div>
         ) : farms.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-3 gap-8">
             {farms.map((farm) => (
               <div
                 key={farm.id}
-                className="bg-white/5 backdrop-blur-xl rounded-[32px] p-8 shadow-2xl hover:bg-white/10 transition"
+                className="
+                  overflow-hidden
+                  rounded-[32px]
+                  bg-white/5
+                  border
+                  border-white/10
+                  hover:border-emerald-500
+                  transition
+                "
               >
-                {/* FARM HEADER */}
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <h3 className="text-xl font-black uppercase tracking-tighter">{farm.name}</h3>
+                {/* IMAGE */}
 
-                    <div className="flex items-center gap-2 text-zinc-500 text-[11px] mt-2">
-                      <MapPin size={12} />
-                      {farm.address || 'Unknown location'}
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-white/5 rounded-2xl text-emerald-400">
-                    <Store size={18} />
-                  </div>
+                <div className="h-60 bg-black">
+                  <img
+                    src={getImageUrl(farm.image)}
+                    alt={farm.name}
+                    className="
+                      w-full
+                      h-full
+                      object-cover
+                    "
+                    onError={(e) => {
+                      e.target.src = '/placeholder-farm.jpg';
+                    }}
+                  />
                 </div>
 
-                {/* ACTION */}
-                <Link
-                  to={`/store/${farm.id}`}
-                  className="block w-full mt-6 bg-emerald-500 text-black py-4 rounded-2xl text-center font-black uppercase text-[11px] tracking-widest hover:bg-emerald-400 transition"
-                >
-                  ENTER STORE NODE
-                </Link>
+                {/* CONTENT */}
+
+                <div className="p-8">
+                  <div className="flex justify-between mb-5">
+                    <div>
+                      <h3 className="text-xl font-black">{farm.name}</h3>
+
+                      <div className="flex items-center gap-2 text-zinc-500 text-xs">
+                        <MapPin size={12} />
+
+                        {farm.address || 'Unknown location'}
+                      </div>
+                    </div>
+
+                    <Store className="text-emerald-400" />
+                  </div>
+
+                  {/* SIGNAL */}
+
+                  <div className="mb-4 flex justify-between text-xs">
+                    <span className="text-emerald-400">ONLINE</span>
+
+                    <span>{farm.signal}%</span>
+                  </div>
+
+                  <div className="h-2 bg-white/10 rounded mb-6">
+                    <div
+                      className="h-full bg-emerald-400 rounded"
+                      style={{
+                        width: `${farm.signal}%`,
+                      }}
+                    />
+                  </div>
+
+                  <Link
+                    to={`/store/${farm.id}`}
+                    className="
+                      block
+                      w-full
+                      text-center
+                      py-4
+                      rounded-2xl
+                      bg-emerald-500
+                      text-black
+                      font-black
+                    "
+                  >
+                    ENTER FARM
+                  </Link>
+                </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="bg-white/5 rounded-[32px] p-10 text-center text-zinc-500 uppercase tracking-widest font-black text-[11px]">
-            NO FARMS DETECTED IN NETWORK
-          </div>
+          <div className="text-center py-32">NO FARMS FOUND</div>
         )}
       </div>
     </MainLayout>
