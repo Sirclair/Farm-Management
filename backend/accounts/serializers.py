@@ -10,6 +10,8 @@ from .utils import get_user_farm
 
 
 class FarmSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
     class Meta:
         model = Farm
         fields = [
@@ -20,7 +22,27 @@ class FarmSerializer(serializers.ModelSerializer):
             "phone",
             "address",
             "is_active_subscription",
+            "image",
         ]
+
+    def get_image(self, obj):
+
+        batch = (
+            FlockBatch.objects
+            .filter(farm=obj)
+            .exclude(image="")
+            .order_by("-id")
+            .first()
+        )
+
+        request = self.context.get("request")
+
+        if batch and batch.image:
+            return request.build_absolute_uri(
+                batch.image.url
+            )
+
+        return None
 
 
 class FarmRegistrationSerializer(serializers.ModelSerializer):
