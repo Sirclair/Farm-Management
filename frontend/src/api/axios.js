@@ -2,89 +2,94 @@ import axios from 'axios';
 
 const getBaseURL = () => {
   const url = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-  // Ensure we consistently return a URL WITHOUT a trailing slash
+
   return url.endsWith('/') ? url.slice(0, -1) : url;
 };
 
 const BASE_URL = getBaseURL();
 
-/**
- * Main Axios instance
- */
+// ======================================
+// AXIOS INSTANCE
+// ======================================
+
 const api = axios.create({
   baseURL: BASE_URL,
+
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// =====================================================
-// REQUEST INTERCEPTOR (ATTACH ACCESS TOKEN)
-// =====================================================
+// ======================================
+// REQUEST INTERCEPTOR
+// ======================================
+
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access');
+    const token = localStorage.getItem('token');
+
+    const farmId = localStorage.getItem('active_farm');
+
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = `Token ${token}`;
     }
+
+    if (farmId) {
+      config.headers['X-FARM-ID'] = farmId;
+    }
+
     return config;
   },
+
   (error) => Promise.reject(error)
 );
 
-// =====================================================
-// RESPONSE INTERCEPTOR (AUTO REFRESH TOKEN)
-// =====================================================
+// ======================================
+// RESPONSE INTERCEPTOR
+// ======================================
+
+let redirecting = false;
+
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
 
+  async (error) => {
+    const status = error?.response?.status;
+
+    const url = error?.config?.url || '';
+
+    console.log('API ERROR:', status, url);
+
+    // server offline
     if (!error.response) {
       return Promise.reject(error);
     }
 
-    const { status } = error.response;
+    // session expired
+    if (status === 401 && url.includes('/accounts/me/')) {
+      if (!redirecting) {
+        redirecting = true;
 
-    // 1. DO NOT TRY TO REFRESH ON LOGIN REQUESTS
-    if (status === 401 && originalRequest?.url?.includes('login')) {
-      return Promise.reject(error);
+        localStorage.removeItem('token');
+
+        localStorage.removeItem('active_farm');
+
+        localStorage.removeItem('user');
+
+        delete api.defaults.headers.common.Authorization;
+
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 100);
+      }
     }
 
-    // 2. HANDLE TOKEN REFRESH
-    if (status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+    // invalid farm
+    if (status === 403) {
+      const message = error.response?.data?.error;
 
-      try {
-        const refreshToken = localStorage.getItem('refresh');
-
-        if (!refreshToken) {
-          throw new Error('No refresh token found');
-        }
-
-        // Using a clean axios instance to prevent interceptor loops,
-        // combined with a cleanly formatted URL string
-        const res = await axios.post(`${BASE_URL}/api/refresh/`, {
-          refresh: refreshToken,
-        });
-
-        const newAccessToken = res.data.access;
-
-        // Save new access token
-        localStorage.setItem('access', newAccessToken);
-
-        // Update header and retry original request
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-        return api(originalRequest);
-      } catch (refreshError) {
-        // Refresh failed → logout user
-        localStorage.removeItem('access');
-        localStorage.removeItem('refresh');
-
-        window.location.href = '/login';
-
-        return Promise.reject(refreshError);
+      if (message?.includes('farm')) {
+        localStorage.removeItem('active_farm');
       }
     }
 

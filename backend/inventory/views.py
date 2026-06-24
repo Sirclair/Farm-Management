@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from finance.models import Expense
 from accounts.utils import get_user_farm
+from accounts.permissions import InventoryPermission
 
 from .models import (
     InventoryItem,
@@ -51,7 +52,7 @@ class FarmMixin:
 class InventoryItemViewSet(FarmMixin, viewsets.ModelViewSet):
     serializer_class = InventoryItemSerializer
     queryset = InventoryItem.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [InventoryPermission]
 
     def perform_create(self, serializer):
         serializer.save(farm=self.get_farm())
@@ -220,7 +221,7 @@ class InventoryItemViewSet(FarmMixin, viewsets.ModelViewSet):
 class SupplierViewSet(FarmMixin, viewsets.ModelViewSet):
     serializer_class = SupplierSerializer
     queryset = Supplier.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [InventoryPermission]
 
     def perform_create(self, serializer):
         serializer.save(farm=self.get_farm())
@@ -232,7 +233,7 @@ class SupplierViewSet(FarmMixin, viewsets.ModelViewSet):
 class PurchaseOrderViewSet(FarmMixin, viewsets.ModelViewSet):
     serializer_class = PurchaseOrderSerializer
     queryset = PurchaseOrder.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [InventoryPermission]
 
     def perform_create(self, serializer):
         serializer.save(farm=self.get_farm())
@@ -244,4 +245,4 @@ class PurchaseOrderViewSet(FarmMixin, viewsets.ModelViewSet):
 class InventoryPurchaseViewSet(FarmMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = InventoryPurchaseSerializer
     queryset = InventoryPurchase.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [InventoryPermission]

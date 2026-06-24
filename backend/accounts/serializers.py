@@ -1,11 +1,12 @@
 from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions
 from django.db import transaction
-from rest_framework import serializers
 
+from rest_framework import serializers
 from flock.models import FlockBatch
+
 from .models import Farm, FarmMembership, User
-from .utils import get_user_farm    
+from .utils import get_user_farm
 
 
 class FarmSerializer(serializers.ModelSerializer):
@@ -25,19 +26,10 @@ class FarmSerializer(serializers.ModelSerializer):
 class FarmRegistrationSerializer(serializers.ModelSerializer):
     farm_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
     password = serializers.CharField(write_only=True)
-    first_name = serializers.CharField(required=False, allow_blank=True)
-    last_name = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = [
-            "username",
-            "email",
-            "password",
-            "first_name",
-            "last_name",
-            "farm_name",
-        ]
+        fields = ["username", "email", "password", "farm_name"]
 
     def validate_password(self, value):
         try:
@@ -55,7 +47,7 @@ class FarmRegistrationSerializer(serializers.ModelSerializer):
                 **validated_data,
                 password=password,
                 role="owner" if farm_name else "customer",
-                is_verified=True,  # Auto-verify for simplicity
+                is_verified=True,
             )
 
             if farm_name:
@@ -64,7 +56,15 @@ class FarmRegistrationSerializer(serializers.ModelSerializer):
                     owner_name=user.username,
                     email=user.email,
                 )
-                FarmMembership.objects.create(user=user, farm=farm, role="owner")
+
+                membership = FarmMembership.objects.create(
+                    user=user,
+                    farm=farm,
+                    role="owner",
+                )
+
+                user.active_membership = membership
+                user.save(update_fields=["active_membership"])
 
         return user
 
@@ -80,8 +80,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "username",
             "email",
             "is_verified",
-            "first_name",
-            "last_name",
             "role",
             "farm",
             "farm_name",
@@ -93,26 +91,29 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_farm_name(self, obj):
         farm = get_user_farm(obj)
-        return farm.name if farm else "Command Center"
-
-
+        return farm.name if farm else "No Farm"
+    
 class FarmProductSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source="name")
-    quantity = serializers.SerializerMethodField()
-    price = serializers.DecimalField(
-        source="selling_price_per_bird", max_digits=10, decimal_places=2
-    )
+
+    current_stock = serializers.ReadOnlyField()
+    age_in_weeks = serializers.ReadOnlyField()
+    survival_rate = serializers.ReadOnlyField()
 
     class Meta:
         model = FlockBatch
+
         fields = [
             "id",
-            "product_name",
-            "quantity",
+            "name",
+            "batch_number",
+            "flock_type",
             "breed",
-            "price",
+            "quantity_received",
+            "current_stock",
+            "survival_rate",
+            "age_in_weeks",
+            "selling_price_per_bird",
             "image",
+            "status",
+            "acquisition_date",
         ]
-
-    def get_quantity(self, obj):
-        return obj.current_stock

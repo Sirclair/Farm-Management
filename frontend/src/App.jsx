@@ -5,7 +5,7 @@ import Auth from './pages/Auth';
 import VerifyLink from './pages/VerifyLink';
 import Dashboard from './pages/Dashboard';
 import Flocks from './pages/Flocks';
-import Expenses from './pages/Expenses';
+
 import Sales from './pages/Sales'; // This acts as your Orders/Sales Desk
 import Inventory from './pages/Inventory';
 import Reports from './pages/Reports';
@@ -16,6 +16,7 @@ import Marketplace from './pages/Marketplace';
 import FarmStore from './pages/FarmStore';
 import Checkout from './pages/Checkout'; // New Page
 import PendingOrders from './pages/PendingOrders';
+import Income from './pages/Finance';
 
 import ProtectedRoute from './ProtectedRoute';
 
@@ -35,8 +36,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/flocks" element={<Flocks />} />
           <Route path="/inventory" element={<Inventory />} />
-          <Route path="/expenses" element={<Expenses />} />
-
+          <Route path="/finance" element={<Income />} />
           {/* Sales Desk / Orders Terminal */}
           <Route path="/sales" element={<Sales />} />
           <Route path="/pending-orders" element={<PendingOrders />} />

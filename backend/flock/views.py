@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.utils import get_user_farm
+from accounts.permissions import InventoryPermission
 
 from .models import FlockBatch, DailyRecord, StockAdjustment
 from .serializers import (
@@ -19,7 +20,7 @@ from inventory.models import InventoryItem, StockLog
 
 class FlockBatchViewSet(viewsets.ModelViewSet):
     serializer_class = FlockBatchSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [InventoryPermission]
 
     def get_queryset(self):
         farm = get_user_farm(self.request.user)
@@ -32,7 +33,7 @@ class FlockBatchViewSet(viewsets.ModelViewSet):
 
 class DailyRecordViewSet(viewsets.ModelViewSet):
     serializer_class = DailyRecordSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [InventoryPermission]
 
     def get_queryset(self):
         farm = get_user_farm(self.request.user)
@@ -53,7 +54,7 @@ class DailyRecordViewSet(viewsets.ModelViewSet):
 
 class StockAdjustmentViewSet(viewsets.ModelViewSet):
     serializer_class = StockAdjustmentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [InventoryPermission]
 
     def get_queryset(self):
         farm = get_user_farm(self.request.user)

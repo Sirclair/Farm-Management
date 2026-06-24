@@ -10,6 +10,7 @@ from flock.models import FlockBatch
 from products.models import Product
 from inventory.models import StockLog
 from accounts.utils import get_user_farm
+from accounts.permissions import SalesPermission
 
 from .models import (
     Customer,
@@ -32,7 +33,7 @@ from .serializers import (
 # =========================================================
 class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [SalesPermission]
 
     def get_queryset(self):
         farm = get_user_farm(self.request.user)
@@ -231,7 +232,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 # =========================================================
 class PaymentViewSet(viewsets.ModelViewSet):
     serializer_class = PaymentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [SalesPermission]
 
     def get_queryset(self):
         farm = get_user_farm(self.request.user)
@@ -260,7 +261,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
 # =========================================================
 class CustomerViewSet(viewsets.ModelViewSet):
     serializer_class = CustomerSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [SalesPermission]
 
     def get_queryset(self):
         farm = get_user_farm(self.request.user)
@@ -311,7 +312,7 @@ def sales_analytics(request):
 # =========================================================
 class PendingOrderViewSet(viewsets.ModelViewSet):
     serializer_class = PendingOrderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [SalesPermission]
 
     def get_queryset(self):
         farm = get_user_farm(self.request.user)

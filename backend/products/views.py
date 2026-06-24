@@ -2,6 +2,7 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
 from accounts.utils import get_user_farm
+from accounts.permissions import InventoryPermission
 
 from .models import (
     Product,
@@ -22,7 +23,7 @@ from .serializers import (
 
 class ProductCategoryViewSet(viewsets.ModelViewSet):
     serializer_class = ProductCategorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [InventoryPermission]
 
     queryset = ProductCategory.objects.all().order_by("name")
 
@@ -33,7 +34,7 @@ class ProductCategoryViewSet(viewsets.ModelViewSet):
 
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [InventoryPermission]
 
     def get_queryset(self):
 
@@ -62,7 +63,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
 class InventoryViewSet(viewsets.ModelViewSet):
     serializer_class = InventoryItemSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [InventoryPermission]
 
     def get_queryset(self):
 

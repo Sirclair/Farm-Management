@@ -1,4 +1,3 @@
-// Sidebar.jsx
 import React, { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { UserContext } from '../UserContext';
@@ -22,60 +21,95 @@ import {
 
 export default function Sidebar({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }) {
   const location = useLocation();
-  const { user } = useContext(UserContext);
 
-  const farmName = user?.farm_name || user?.farm?.name || 'Zonke Farms';
-  const userName = user?.first_name ? `${user.first_name}` : user?.username || 'Operator';
+  const { user, setUser } = useContext(UserContext);
+
+  // ===================================================
+  // MULTI USER → ONE FARM
+  // ===================================================
+
+  const farmName = user?.farm?.name || user?.farm_name || 'My Farm';
+
+  const userName = user?.first_name || user?.username || 'User';
+
+  const role = user?.role || 'staff';
+
+  const roleMap = {
+    owner: 'Farm Owner',
+    manager: 'Manager',
+    staff: 'Staff',
+  };
+
+  const roleLabel = roleMap[role] || 'Staff';
+
+  // ===================================================
+  // LOGOUT
+  // ===================================================
 
   const handleLogout = () => {
-    localStorage.clear();
-    window.location.href = '/login';
+    localStorage.removeItem('token');
+
+    setUser(null);
+
+    window.location.replace('/login');
   };
+
+  // ===================================================
+  // MENU
+  // ===================================================
 
   const menuItems = [
     {
       name: 'Dashboard',
-      icon: <LayoutDashboard size={18} />,
+      icon: LayoutDashboard,
       path: '/dashboard',
     },
+
     {
       name: 'Flock Registry',
-      icon: <Bird size={18} />,
+      icon: Bird,
       path: '/flocks',
     },
+
     {
-      name: 'Resource Stockpile',
-      icon: <Package size={18} />,
-      path: '/inventory',
+      name: 'Finance',
+      icon: Wallet,
+      path: '/finance',
     },
-    {
-      name: 'Expense Ledger',
-      icon: <Wallet size={18} />,
-      path: '/expenses',
-    },
+
     {
       name: 'Sales Desk',
-      icon: <ShoppingCart size={18} />,
+      icon: ShoppingCart,
       path: '/sales',
     },
+
+    {
+      name: 'Inventory',
+      icon: Package,
+      path: '/inventory',
+    },
+
     {
       name: 'Pending Orders',
-      icon: <ClipboardList size={18} />,
+      icon: ClipboardList,
       path: '/pending-orders',
     },
+
     {
       name: 'Open Market',
-      icon: <Store size={18} />,
+      icon: Store,
       path: '/marketplace',
     },
+
     {
-      name: 'Performance',
-      icon: <FileText size={18} />,
+      name: 'Reports',
+      icon: FileText,
       path: '/reports',
     },
+
     {
-      name: 'Command Settings',
-      icon: <Settings size={18} />,
+      name: 'Settings',
+      icon: Settings,
       path: '/settings',
     },
   ];
@@ -83,13 +117,13 @@ export default function Sidebar({ isOpen, setIsOpen, isCollapsed, setIsCollapsed
   return (
     <>
       {/* MOBILE OVERLAY */}
+
       {isOpen && (
         <div
           onClick={() => setIsOpen(false)}
           className="
             fixed inset-0
-            bg-black/60
-            backdrop-blur-sm
+            bg-black/70
             z-[60]
             lg:hidden
           "
@@ -97,103 +131,105 @@ export default function Sidebar({ isOpen, setIsOpen, isCollapsed, setIsCollapsed
       )}
 
       {/* SIDEBAR */}
+
       <aside
         className={`
-          fixed top-0 left-0 h-screen
+          fixed
+          left-0
+          top-0
+          h-screen
           bg-[#121212]
           text-white
-          flex flex-col
           z-[70]
-          transition-all duration-300 ease-in-out
-
-          w-[280px]
+          flex
+          flex-col
+          transition-all
+          duration-300
 
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
 
           lg:translate-x-0
+
           ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
+
+          w-[280px]
         `}
       >
-        {/* TOP BAR MOBILE */}
-        <div className="lg:hidden flex items-center justify-between p-4 border-b border-white/5">
+        {/* MOBILE TOP */}
+
+        <div className="lg:hidden p-5 flex justify-between items-center border-b border-white/5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-              <Brain size={20} className="text-black" />
+            <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center">
+              <Brain size={18} />
             </div>
 
             <div>
-              <h2 className="font-black text-sm uppercase tracking-wide">{farmName}</h2>
-              <p className="text-[9px] uppercase tracking-[0.2em] text-emerald-400">AI Command</p>
+              <h2 className="font-black text-sm">{farmName}</h2>
+
+              <p className="text-[10px] text-emerald-400">{roleLabel}</p>
             </div>
           </div>
 
-          <button onClick={() => setIsOpen(false)} className="p-2 rounded-lg hover:bg-white/5">
+          <button onClick={() => setIsOpen(false)}>
             <X size={18} />
           </button>
         </div>
 
-        {/* DESKTOP COLLAPSE BUTTON */}
+        {/* DESKTOP */}
+
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="
-            hidden lg:flex
-            absolute -right-3 top-12
-            w-6 h-6
-            bg-emerald-500
-            text-black
+            hidden
+            lg:flex
+            absolute
+            -right-3
+            top-10
+            w-7
+            h-7
             rounded-full
-            items-center justify-center
-            shadow-lg
-            z-10
-            hover:bg-emerald-400
+            bg-emerald-500
+            items-center
+            justify-center
+            text-black
           "
         >
-          {isCollapsed ? (
-            <ChevronRight size={12} strokeWidth={4} />
-          ) : (
-            <ChevronLeft size={12} strokeWidth={4} />
-          )}
+          {isCollapsed ? <ChevronRight /> : <ChevronLeft />}
         </button>
 
-        {/* BRANDING */}
+        {/* HEADER */}
+
         <div
           className={`
-            hidden lg:flex
-            items-center gap-3
-            p-8 mb-4
-            ${isCollapsed ? 'justify-center px-0' : ''}
+            hidden
+            lg:flex
+            p-8
+            items-center
+            gap-3
+
+            ${isCollapsed ? 'justify-center' : ''}
           `}
         >
-          <div
-            className="
-              min-w-[40px]
-              h-[40px]
-              bg-emerald-500
-              rounded-xl
-              flex items-center justify-center
-              shrink-0
-              shadow-[0_0_20px_rgba(16,185,129,0.2)]
-            "
-          >
-            <Brain size={22} className="text-black" />
+          <div className="w-11 h-11 rounded-xl bg-emerald-500 flex items-center justify-center">
+            <Brain size={20} />
           </div>
 
           {!isCollapsed && (
-            <div className="overflow-hidden">
-              <h1 className="text-[15px] font-black uppercase tracking-tight text-white leading-none truncate">
-                {farmName}
-              </h1>
-              <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-[0.2em] mt-1">
-                AI Command
-              </p>
+            <div>
+              <h1 className="font-black">{farmName}</h1>
+
+              <p className="text-xs text-emerald-400">{roleLabel}</p>
             </div>
           )}
         </div>
 
-        {/* NAVIGATION */}
-        <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
+        {/* MENU */}
+
+        <nav className="flex-1 px-3">
           {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const Active = location.pathname === item.path;
+
+            const Icon = item.icon;
 
             return (
               <Link
@@ -201,106 +237,85 @@ export default function Sidebar({ isOpen, setIsOpen, isCollapsed, setIsCollapsed
                 to={item.path}
                 onClick={() => setIsOpen(false)}
                 className={`
-                  flex items-center
-                  rounded-xl
-                  font-bold
-                  text-[10px]
-                  uppercase
-                  tracking-widest
-                  transition-all duration-200
-                  group
+                    flex
+                    items-center
+                    rounded-xl
+                    mb-2
+                    transition
 
-                  ${isCollapsed ? 'lg:justify-center lg:h-12' : 'gap-4 px-4 py-3.5'}
+                    ${
+                      Active
+                        ? 'bg-emerald-500/10 text-emerald-400'
+                        : 'text-zinc-400 hover:bg-white/5'
+                    }
 
-                  ${
-                    isActive
-                      ? 'bg-emerald-500/10 text-emerald-400'
-                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                  }
-                `}
-              >
-                <div
-                  className={`
-                    shrink-0
-                    ${isActive ? 'text-emerald-400' : 'text-zinc-500 group-hover:text-white'}
+                    ${isCollapsed ? 'justify-center p-4' : 'gap-4 p-4'}
                   `}
-                >
-                  {item.icon}
-                </div>
+              >
+                <Icon size={18} />
 
-                {(!isCollapsed || window.innerWidth < 1024) && (
-                  <span className="truncate">{item.name}</span>
-                )}
+                {!isCollapsed && <span>{item.name}</span>}
               </Link>
             );
           })}
         </nav>
 
-        {/* USER CARD */}
+        {/* USER */}
+
         <div
-          className={`p-4 m-4 rounded-2xl bg-[#1A1A1A] border border-white/5 shadow-xl transition-all ${isCollapsed ? 'lg:mx-2 lg:p-2' : ''}`}
+          className="
+            m-4
+            p-4
+            rounded-2xl
+            bg-[#181818]
+          "
         >
           <div
-            className={`
-              flex items-center
-              ${isCollapsed ? 'lg:justify-center lg:mb-0' : 'gap-3 px-1 mb-4'}
-            `}
+            className="
+              flex
+              items-center
+              gap-3
+            "
           >
             <div
               className="
-                w-10 h-10
-                bg-emerald-900/30
-                text-emerald-400
-                border border-emerald-500/20
-                rounded-lg
-                flex items-center justify-center
-                text-xs font-black
-                shrink-0
+                w-10
+                h-10
+                rounded-xl
+                bg-emerald-500
+                text-black
+                flex
+                items-center
+                justify-center
+                font-black
               "
             >
               {userName.charAt(0).toUpperCase()}
             </div>
 
-            {(!isCollapsed || window.innerWidth < 1024) && (
-              <div className="overflow-hidden">
-                <p className="text-[11px] font-black truncate text-white uppercase">{userName}</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]" />
-                  <p className="text-[8px] text-emerald-400 font-bold uppercase tracking-wider">
-                    Operator Active
-                  </p>
-                </div>
+            {!isCollapsed && (
+              <div>
+                <div className="font-bold">{userName}</div>
+
+                <div className="text-xs text-emerald-400">{roleLabel}</div>
               </div>
             )}
           </div>
 
-          {/* LOGOUT */}
-          {!isCollapsed || window.innerWidth < 1024 ? (
+          {!isCollapsed && (
             <button
               onClick={handleLogout}
               className="
-                flex items-center
-                text-zinc-500
-                hover:text-white
-                font-bold
-                text-[9px]
-                uppercase
-                transition-all
+                mt-4
                 w-full
-                gap-4 px-2 py-2
-                mt-2 border-t border-white/5 pt-3
+                flex
+                items-center
+                gap-3
+                text-red-400
               "
             >
               <LogOut size={16} />
-              <span>Close Session</span>
-            </button>
-          ) : (
-            <button
-              onClick={handleLogout}
-              title="Close Session"
-              className="hidden lg:flex items-center justify-center text-zinc-500 hover:text-white transition-all w-full p-2 mt-2"
-            >
-              <LogOut size={16} />
+              Logout
             </button>
           )}
         </div>

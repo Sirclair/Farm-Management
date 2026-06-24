@@ -1,25 +1,21 @@
 from rest_framework.exceptions import NotAuthenticated, PermissionDenied
 from .models import FarmMembership
 
-
 def get_user_farm(user):
-    """
-    Single source of truth for farm resolution.
-    No silent failures allowed.
-    """
 
-    if not user or not user.is_authenticated:
-        raise NotAuthenticated("Authentication required")
+    if user.active_membership and user.active_membership.farm:
+        return user.active_membership.farm
 
     membership = (
-        FarmMembership.objects
+        user.farm_memberships
         .select_related("farm")
-        .filter(user=user)
-        .order_by("-joined_at")
+        .filter(is_active=True)
         .first()
     )
 
-    if not membership:
-        raise PermissionDenied("No farm assigned to this user")
+    if membership:
+        user.active_membership = membership
+        user.save(update_fields=["active_membership"])
+        return membership.farm
 
-    return membership.farm
+    return None
