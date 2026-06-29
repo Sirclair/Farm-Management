@@ -3,11 +3,21 @@ from django.core import exceptions
 from django.db import transaction
 
 from rest_framework import serializers
+
 from flock.models import FlockBatch
 
-from .models import Farm, FarmMembership, User
+from .models import (
+    Farm,
+    FarmMembership,
+    User,
+)
+
 from .utils import get_user_farm
 
+
+# ======================================================
+# FARM
+# ======================================================
 
 class FarmSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
@@ -35,68 +45,128 @@ class FarmSerializer(serializers.ModelSerializer):
             .first()
         )
 
+        if not batch or not batch.image:
+            return None
+
         request = self.context.get("request")
 
-        if batch and batch.image:
-            return request.build_absolute_uri(
-                batch.image.url
-            )
+        try:
+            if request:
+                return request.build_absolute_uri(
+                    batch.image.url
+                )
 
-        return None
+            return batch.image.url
+
+        except Exception as e:
+            print("IMAGE SERIALIZER ERROR:", e)
+            return None
 
 
-class FarmRegistrationSerializer(serializers.ModelSerializer):
-    farm_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    password = serializers.CharField(write_only=True)
+# ======================================================
+# REGISTER
+# ======================================================
+
+class FarmRegistrationSerializer(
+    serializers.ModelSerializer
+):
+
+    farm_name = serializers.CharField(
+        write_only=True,
+        required=False,
+        allow_blank=True,
+    )
+
+    password = serializers.CharField(
+        write_only=True
+    )
 
     class Meta:
         model = User
-        fields = ["username", "email", "password", "farm_name"]
+
+        fields = [
+            "username",
+            "email",
+            "password",
+            "farm_name",
+        ]
 
     def validate_password(self, value):
+
         try:
             validate_password(value)
+
         except exceptions.ValidationError as e:
-            raise serializers.ValidationError(list(e.messages))
+            raise serializers.ValidationError(
+                list(e.messages)
+            )
+
         return value
 
     def create(self, validated_data):
-        farm_name = validated_data.pop("farm_name", None)
-        password = validated_data.pop("password")
+
+        farm_name = validated_data.pop(
+            "farm_name",
+            None,
+        )
+
+        password = validated_data.pop(
+            "password"
+        )
 
         with transaction.atomic():
+
             user = User.objects.create_user(
                 **validated_data,
                 password=password,
-                role="owner" if farm_name else "customer",
+                role="owner"
+                if farm_name
+                else "customer",
                 is_verified=True,
             )
 
             if farm_name:
+
                 farm = Farm.objects.create(
                     name=farm_name,
                     owner_name=user.username,
                     email=user.email,
                 )
 
-                membership = FarmMembership.objects.create(
-                    user=user,
-                    farm=farm,
-                    role="owner",
+                membership = (
+                    FarmMembership.objects.create(
+                        user=user,
+                        farm=farm,
+                        role="owner",
+                    )
                 )
 
                 user.active_membership = membership
-                user.save(update_fields=["active_membership"])
+
+                user.save(
+                    update_fields=[
+                        "active_membership"
+                    ]
+                )
 
         return user
 
 
-class UserProfileSerializer(serializers.ModelSerializer):
+# ======================================================
+# USER PROFILE
+# ======================================================
+
+class UserProfileSerializer(
+    serializers.ModelSerializer
+):
+
     farm = serializers.SerializerMethodField()
+
     farm_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
+
         fields = [
             "id",
             "username",
@@ -108,17 +178,40 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ]
 
     def get_farm(self, obj):
+
         farm = get_user_farm(obj)
-        return FarmSerializer(farm).data if farm else None
+
+        if not farm:
+            return None
+
+        return FarmSerializer(
+            farm,
+            context=self.context
+        ).data
 
     def get_farm_name(self, obj):
+
         farm = get_user_farm(obj)
-        return farm.name if farm else "No Farm"
-    
-class FarmProductSerializer(serializers.ModelSerializer):
+
+        return (
+            farm.name
+            if farm
+            else "No Farm"
+        )
+
+
+# ======================================================
+# PRODUCTS
+# ======================================================
+
+class FarmProductSerializer(
+    serializers.ModelSerializer
+):
 
     current_stock = serializers.ReadOnlyField()
+
     age_in_weeks = serializers.ReadOnlyField()
+
     survival_rate = serializers.ReadOnlyField()
 
     class Meta:

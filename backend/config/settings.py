@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     "products",
     "inventory",
     "ai",
+    "reports",
 ]
 
 AUTH_USER_MODEL = "accounts.User"

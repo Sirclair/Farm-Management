@@ -12,6 +12,12 @@ from inventory.models import StockLog
 from accounts.utils import get_user_farm
 from accounts.permissions import SalesPermission
 
+from finance.models import Income
+from finance.services import (
+    get_open_period,
+    recalculate_period,
+)
+
 from .models import (
     Customer,
     Order,
@@ -64,7 +70,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             customer, _ = Customer.objects.get_or_create(
                 farm=farm,
                 full_name=customer_name,
-                )
+            )
 
         # 1. Spawn root Order tracking frame instance
         order = Order.objects.create(
@@ -201,17 +207,46 @@ class OrderViewSet(viewsets.ModelViewSet):
             if amount <= 0:
                 continue
 
-            Payment.objects.create(
+            payment = Payment.objects.create(
                 order=order,
                 amount=amount,
-                method=payment_data.get("method", "cash"),
-                reference=payment_data.get("reference", ""),
+                method=payment_data.get(
+                    "method",
+                    "cash"
+                ),
+                reference=payment_data.get(
+                    "reference",
+                    ""
+                ),
             )
 
             paid += amount
 
+            # ==========================
+            # SEND INITIAL SALE PAYMENT
+            # TO FINANCE
+            # ==========================
+
+            period = get_open_period(
+                farm
+            )
+
+            Income.objects.create(
+                farm=farm,
+                period=period,
+                amount=amount,
+                source=(
+                    f"Sale Payment "
+                    f"#{order.id}"
+                )
+            )
+
         # Explicitly run balance fields compilation metrics inside database records
         order.calculate_totals()
+
+        recalculate_period(
+            period
+        )
 
         # 2. FIX: Fetch fresh evaluated query snapshot to populate frontend state correctly
         fresh_order = (
@@ -240,20 +275,62 @@ class PaymentViewSet(viewsets.ModelViewSet):
         if not farm:
             return Payment.objects.none()
 
-        return Payment.objects.filter(order__farm=farm)
+        return (
+            Payment.objects
+            .filter(order__farm=farm)
+        )
 
     @transaction.atomic
-    def perform_create(self, serializer):
-        order = serializer.validated_data["order"]
-        amount = Decimal(str(serializer.validated_data["amount"]))
+    def perform_create(
+        self,
+        serializer
+    ):
+        order = (
+            serializer
+            .validated_data["order"]
+        )
+
+        amount = Decimal(
+            str(
+                serializer
+                .validated_data["amount"]
+            )
+        )
 
         if amount > order.balance_due:
             raise ValueError(
                 f"Payment exceeds balance of R {order.balance_due}"
             )
 
-        serializer.save()
+        payment = serializer.save()
+
+        # recalculate sales totals
         order.calculate_totals()
+
+        # ==========================
+        # SEND TO FINANCE
+        # ==========================
+        farm = order.farm
+
+        period = get_open_period(
+            farm
+        )
+
+        Income.objects.create(
+            farm=farm,
+            period=period,
+            amount=amount,
+            source=(
+                f"Sale Payment "
+                f"#{order.id}"
+            )
+        )
+
+        recalculate_period(
+            period
+        )
+
+        return payment
 
 
 # =========================================================

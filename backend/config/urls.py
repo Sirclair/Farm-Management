@@ -70,6 +70,11 @@ urlpatterns = [
                 "ai/",
                 include("ai.urls")
             ),
+            
+            path(
+                "reports/",
+                include("reports.urls")
+            ),
         ]),
     ),
 

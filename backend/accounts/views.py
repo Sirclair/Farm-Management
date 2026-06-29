@@ -406,83 +406,139 @@ class SwitchFarmView(APIView):
 # LOGIN
 # =====================================================
 
+# =====================================================
+# LOGIN
+# =====================================================
+
 class LoginView(APIView):
 
-    permission_classes = []
+    permission_classes = [AllowAny]
 
     def post(self, request):
 
-        username = (
-            request.data
-            .get(
+        try:
+            username = request.data.get(
                 "username",
                 ""
-            )
-            .strip()
-        )
+            ).strip()
 
-        password = (
-            request.data
-            .get(
+            password = request.data.get(
                 "password",
                 ""
             )
-        )
 
-        user = authenticate(
-            request,
-            username=username,
-            password=password,
-        )
+            print("\n========== LOGIN START ==========")
+            print("USERNAME:", username)
 
-        if not user:
+            user = authenticate(
+                request,
+                username=username,
+                password=password,
+            )
+
+            if not user:
+                print("AUTH FAILED")
+
+                return Response(
+                    {
+                        "error":
+                        "Invalid username or password"
+                    },
+                    status=400
+                )
+
+            print("AUTH SUCCESS:", user.username)
+
+            memberships = (
+                user.farm_memberships
+                .select_related("farm")
+                .filter(is_active=True)
+            )
+
+            # auto recover membership
+            if not user.active_membership:
+
+                membership = memberships.first()
+
+                if membership:
+                    user.active_membership = membership
+
+                    user.save(
+                        update_fields=[
+                            "active_membership"
+                        ]
+                    )
+
+            token, created = (
+                Token.objects
+                .get_or_create(
+                    user=user
+                )
+            )
+
+            print(
+                "TOKEN:",
+                token.key[:10]
+            )
+
+            response = {
+
+                "token":
+                token.key,
+
+                "user":
+                UserProfileSerializer(
+                    user,
+                    context={
+                        "request": request
+                    }
+                ).data,
+
+                "active_farm":
+                (
+                    user.current_farm.id
+                    if user.current_farm
+                    else None
+                ),
+
+                "farms": [
+                    {
+                        "id": m.farm.id,
+                        "name": m.farm.name,
+                        "role": m.role,
+
+                        "permissions": {
+                            "inventory": m.can_manage_inventory,
+                            "finance": m.can_manage_finance,
+                            "sales": m.can_manage_sales,
+                            "staff": m.can_manage_staff,
+                        }
+                    }
+
+                    for m in memberships
+                ]
+            }
+
+            print("LOGIN RESPONSE OK")
+            print("===============================\n")
+
+            return Response(
+                response,
+                status=200
+            )
+
+        except Exception as e:
+
+            print("\nLOGIN ERROR:")
+            print(str(e))
 
             return Response(
                 {
                     "error":
-                    "Invalid username or password"
+                    str(e)
                 },
-                status=400
+                status=500
             )
-
-        if not user.active_membership:
-
-            membership = (
-                user.farm_memberships
-                .filter(
-                    is_active=True
-                )
-                .first()
-            )
-
-            if membership:
-
-                user.active_membership = membership
-
-                user.save(
-                    update_fields=[
-                        "active_membership"
-                    ]
-                )
-
-        token, _ = (
-            Token.objects
-            .get_or_create(
-                user=user
-            )
-        )
-
-        return Response({
-
-            "token":
-            token.key,
-
-            "user":
-            UserProfileSerializer(
-                user
-            ).data,
-        })
-
 
 # =====================================================
 # CHANGE PASSWORD

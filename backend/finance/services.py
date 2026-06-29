@@ -27,11 +27,12 @@ def get_open_period(farm):
     if period:
         return period
 
-    week = date.today().isocalendar().week
+    # Use an explicit start-date naming scheme for on-demand flexibility
+    session_date = date.today().strftime("%d %b %Y")
 
     return FinancePeriod.objects.create(
         farm=farm,
-        name=f"Week {week}",
+        name=f"Session starting {session_date}",
         start_date=date.today(),
         status="open",
     )
@@ -77,7 +78,7 @@ def recalculate_period(period):
 
 def close_period(period, cash_out=0):
     """
-    Close current week and create next one.
+    Close current financial cycle and instantly initialize the next on-demand slate.
     """
 
     recalculate_period(period)
@@ -96,11 +97,12 @@ def close_period(period, cash_out=0):
 
     period.save()
 
-    next_week = date.today().isocalendar().week
+    # Generate next dynamic start-date string stamp
+    next_session_date = date.today().strftime("%d %b %Y")
 
     return FinancePeriod.objects.create(
         farm=period.farm,
-        name=f"Week {next_week}",
+        name=f"Session starting {next_session_date}",
         opening_balance=period.closing_balance,
         start_date=date.today(),
         status="open",
