@@ -14,21 +14,21 @@ export default function Navbar() {
   return (
     <header className="h-20 bg-[#0a0a0a]/60 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-10 sticky top-0 z-40 shadow-2xl transition-all">
       {/* LEFT SIDE: Operations Branding */}
-      <div className="flex items-center gap-5">
-        <div className="w-10 h-10 bg-gradient-to-tr from-emerald-400 via-emerald-500 to-cyan-500 rounded-xl flex items-center justify-center text-[#020617] shadow-[0_0_25px_rgba(16,185,129,0.25)] animate-pulse">
+      <div className="flex items-center gap-5 min-w-0">
+        <div className="w-10 h-10 bg-gradient-to-tr from-emerald-400 via-emerald-500 to-cyan-500 rounded-xl flex items-center justify-center text-[#020617] shadow-[0_0_25px_rgba(16,185,129,0.25)] animate-pulse shrink-0">
           <Zap size={16} fill="currentColor" strokeWidth={0} />
         </div>
 
-        <div>
-          <h2 className="text-lg font-black text-white tracking-tighter uppercase italic leading-none flex items-center gap-2">
-            {farmName}
-            <span className="text-[10px] tracking-widest text-emerald-400 not-italic font-black bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+        <div className="min-w-0">
+          <h2 className="text-lg font-black text-white tracking-tighter uppercase italic leading-none flex items-center gap-2 truncate">
+            <span className="truncate">{farmName}</span>
+            <span className="text-[10px] tracking-widest text-emerald-400 not-italic font-black bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
               HQ
             </span>
           </h2>
           <div className="flex items-center gap-1.5 mt-1.5">
-            <Radio size={10} className="text-emerald-500" />
-            <p className="text-[8px] font-black text-zinc-500 uppercase tracking-[0.3em]">
+            <Radio size={10} className="text-emerald-500 shrink-0" />
+            <p className="text-[8px] font-black text-zinc-500 uppercase tracking-[0.3em] truncate">
               CORE FREQUENCY: <span className="text-emerald-400 font-bold">ONLINE</span>
             </p>
           </div>
@@ -36,7 +36,7 @@ export default function Navbar() {
       </div>
 
       {/* RIGHT SIDE: Search & Global Actions */}
-      <div className="flex items-center gap-8">
+      <div className="flex items-center gap-8 shrink-0">
         {/* VIVID SEARCH BAR */}
         <div className="relative hidden lg:block group">
           <Search
@@ -46,10 +46,10 @@ export default function Navbar() {
           <input
             type="text"
             placeholder="Query Operational Intelligence..."
-            className="pl-12 pr-6 py-2.5 bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest w-80
+            className="pl-12 pr-6 py-2.5 bg-white/5 rounded-xl text-xs font-medium tracking-normal text-white normal-case font-sans w-80
             focus:ring-1 focus:ring-emerald-500/20 focus:bg-[#111111]
             outline-none transition-all duration-300 border border-white/5 focus:border-emerald-500/30
-            text-white placeholder:text-zinc-600 font-mono"
+            placeholder:text-zinc-600 placeholder:font-mono placeholder:text-[10px] placeholder:font-black placeholder:uppercase placeholder:tracking-widest"
           />
         </div>
 
@@ -65,19 +65,19 @@ export default function Navbar() {
           </button>
 
           {/* USER PROFILE CAPSULE */}
-          <div className="flex items-center gap-3 p-1 pr-4 bg-white/5 rounded-xl border border-white/5 cursor-pointer hover:border-emerald-500/20 hover:bg-white/10 transition-all duration-300 group">
+          <div className="flex items-center gap-3 p-1 pr-4 bg-white/5 rounded-xl border border-white/5 cursor-pointer hover:border-emerald-500/20 hover:bg-white/10 transition-all duration-300 group max-w-[200px]">
             {/* Avatar Profile Letter */}
-            <div className="w-8 h-8 bg-gradient-to-tr from-emerald-500 to-cyan-600 rounded-lg flex items-center justify-center text-black text-[11px] font-black shadow-md group-hover:scale-105 transition-transform duration-300">
+            <div className="w-8 h-8 bg-gradient-to-tr from-emerald-500 to-cyan-600 rounded-lg flex items-center justify-center text-black text-xs font-black shadow-md group-hover:scale-105 transition-transform duration-300 select-none shrink-0">
               {displayLetter}
             </div>
 
-            <div className="hidden md:block">
-              <p className="text-[10px] font-black text-white uppercase tracking-tight leading-none group-hover:text-emerald-400 transition-colors duration-300">
+            <div className="hidden md:block min-w-0">
+              <p className="text-[10px] font-black text-white uppercase tracking-tight leading-none group-hover:text-emerald-400 transition-colors duration-300 truncate">
                 {user?.first_name || user?.username || 'Operator'}
               </p>
               <div className="flex items-center gap-1.5 mt-1">
-                <div className="w-1 h-1 rounded-full bg-emerald-500 group-hover:bg-cyan-400 transition-colors" />
-                <p className="text-[7px] font-bold text-zinc-500 uppercase tracking-widest leading-none">
+                <div className="w-1 h-1 rounded-full bg-emerald-500 group-hover:bg-cyan-400 transition-colors shrink-0" />
+                <p className="text-[7px] font-bold text-zinc-500 uppercase tracking-widest leading-none truncate">
                   {user?.role || 'SYSTEM ROOT'}
                 </p>
               </div>
