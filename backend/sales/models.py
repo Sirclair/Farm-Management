@@ -80,71 +80,67 @@ class Order(models.Model):
         ordering = ["-created_at"]
 
     def save(self, *args, **kwargs):
-        # Auto-generate order number if missing
         if not self.order_number:
             today = timezone.now().strftime("%Y%m%d")
-            last_order = Order.objects.filter(
-                order_number__startswith=f"ORD-{today}"
-            ).count() + 1
-            self.order_number = f"ORD-{today}-{last_order:04d}"
-        
-        # Guard against recursive call loop during calculate_totals execution
-        if not kwargs.get('update_fields'):
-            # Calculate inline balances before finalizing database save
-            subtotal = Decimal("0.00")
-            if self.pk:
-                for item in self.items.all():
-                    subtotal += item.total()
-                
-                paid = self.payments.aggregate(
-                    total=models.Sum("amount")
-                )["total"] or Decimal("0.00")
-            else:
-                paid = Decimal("0.00")
 
-            self.subtotal = subtotal
-            self.total_paid = paid
-            self.balance_due = max(Decimal("0.00"), subtotal - paid)
+            last_order = (
+                Order.objects
+                .filter(
+                    order_number__startswith=f"ORD-{today}"
+                )
+                .count()
+                + 1
+            )
 
-            if self.balance_due <= 0:
-                self.payment_status = "paid"
-            elif paid > 0:
-                self.payment_status = "partial"
-            else:
-                self.payment_status = "unpaid"
+            self.order_number = (
+                f"ORD-{today}-{last_order:04d}"
+            )
 
         super().save(*args, **kwargs)
 
     def calculate_totals(self):
-        """
-        Public method to manually trigger balance recalculation logs 
-        from related signals, items, or payment mutations.
-        """
         subtotal = Decimal("0.00")
-        for item in self.items.all():
-            subtotal += item.total()
 
-        paid = self.payments.aggregate(
-            total=models.Sum("amount")
-        )["total"] or Decimal("0.00")
+        for item in self.items.all():
+            subtotal += (
+                item.quantity
+                * item.price_per_unit
+            )
+
+        paid = (
+            self.payments.aggregate(
+                total=models.Sum("amount")
+            )["total"]
+            or Decimal("0.00")
+        )
 
         self.subtotal = subtotal
         self.total_paid = paid
-        self.balance_due = max(Decimal("0.00"), subtotal - paid)
+
+        self.balance_due = max(
+            Decimal("0.00"),
+            subtotal - paid
+        )
 
         if self.balance_due <= 0:
             self.payment_status = "paid"
+
         elif paid > 0:
             self.payment_status = "partial"
+
         else:
             self.payment_status = "unpaid"
 
-        super().save(update_fields=[
-            "subtotal",
-            "total_paid",
-            "balance_due",
-            "payment_status",
-        ])
+        super().save(
+            update_fields=[
+                "subtotal",
+                "total_paid",
+                "balance_due",
+                "payment_status",
+            ]
+        )
+
+        return self
 
     def __str__(self):
         return self.order_number or f"Order #{self.id}"
@@ -188,7 +184,9 @@ class OrderItem(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        self.order.calculate_totals()
+
+        if self.order_id:
+            self.order.calculate_totals()
 
     def delete(self, *args, **kwargs):
         order = self.order
@@ -229,7 +227,9 @@ class Payment(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        self.order.calculate_totals()
+
+        if self.order_id:
+            self.order.calculate_totals()
 
     def delete(self, *args, **kwargs):
         order = self.order
@@ -332,7 +332,6 @@ class PendingOrderItem(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        # No longer need to manually trigger calculate_total database column modifications
 
     def delete(self, *args, **kwargs):
         super().delete(*args, **kwargs)

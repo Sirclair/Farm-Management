@@ -367,23 +367,35 @@ def sales_analytics(request):
 
     orders = Order.objects.filter(farm=farm)
 
-    agg = orders.aggregate(
-        revenue=Sum("subtotal"),
-        paid=Sum("total_paid"),
+    totals = orders.aggregate(
+        sales_value=Sum("subtotal"),
+        collected=Sum("total_paid"),
+        outstanding=Sum("balance_due"),
     )
 
-    revenue = agg["revenue"] or Decimal("0.00")
-    paid = agg["paid"] or Decimal("0.00")
+    sales_value = totals["sales_value"] or Decimal("0.00")
+    collected = totals["collected"] or Decimal("0.00")
+    outstanding = totals["outstanding"] or Decimal("0.00")
 
     return Response({
-        "total_revenue": revenue,
-        "total_paid": paid,
-        "profit": revenue,
-        "debt": revenue - paid,
+        # money actually received
+        "total_revenue": collected,
+
+        # optional display
+        "gross_sales": sales_value,
+
+        # same as revenue
+        "total_paid": collected,
+
+        # unpaid balances
+        "debt": outstanding,
+
+        # cash profit for now
+        "profit": collected,
+
         "orders": orders.count(),
     })
-
-
+    
 # =========================================================
 # PENDING ORDERS VIEWSET
 # =========================================================
@@ -483,74 +495,141 @@ class PendingOrderViewSet(viewsets.ModelViewSet):
         if new_state == "fulfilled":
             self.process_final_fulfillment(order)
         elif new_state == "cancelled":
-            self.process_cancellation_release(order)
+            # Keeps framework clean if cancellation endpoint hooks exist
+            pass
 
     # =====================================================
-    # FINAL FULFILLMENT (FIXED FOR REAL ORDERITEMS & PROPERTY COMPATIBILITY)
+    # FINAL FULFILLMENT (FIXED)
     # =====================================================
+    @transaction.atomic
     def process_final_fulfillment(self, pending_order):
-        # 1. Form a real tracking Order anchor row 
+
+        amount_paid = Decimal(
+            str(
+                pending_order.deposit_paid or 0
+            )
+        )
+
         final_order = Order.objects.create(
             farm=pending_order.farm,
             customer=pending_order.customer,
-            subtotal=pending_order.total_amount,
-            total_paid=pending_order.deposit_paid,
-            payment_status=(
-                "paid"
-                if pending_order.balance_due <= 0
-                else "partial"
-            ),
             notes=(
                 f"Generated from Reservation "
                 f"{pending_order.order_number}. "
                 f"{pending_order.notes or ''}"
-            )
+            ),
         )
 
-        # 2. Build explicit child lines so items reflect on sales layout boards 
+        # ---------------------------------
+        # MOVE ITEMS → SALES ORDER
+        # ---------------------------------
         for item in pending_order.items.all():
-            qty_to_deduct = item.quantity_ordered - item.quantity_fulfilled
 
-            if qty_to_deduct > 0:
-                is_product = item.product is not None
-                inventory = item.product if is_product else item.batch
+            qty = (
+                item.quantity_ordered
+                - item.quantity_fulfilled
+            )
 
-                if not inventory:
-                    continue
+            if qty <= 0:
+                continue
 
-                # Handle tracking adjustments safely on persistent database rows (Products)
-                if is_product:
-                    inventory.stock_quantity = max(
-                        Decimal("0.00"),
-                        Decimal(str(inventory.stock_quantity or 0)) - qty_to_deduct
+            if item.product:
+
+                if item.product.stock_quantity < qty:
+                    raise Exception(
+                        f"{item.product.name} insufficient stock"
                     )
-                    inventory.save()
 
-                # 3. Create real OrderItems. For Live Poultry (`item.batch`), this safely 
-                # triggers your FlockBatch `@property` counters to reduce stock automatically!
-                OrderItem.objects.create(
-                    order=final_order,
-                    product=item.product,
-                    batch=item.batch,
-                    quantity=qty_to_deduct,
-                    price_per_unit=item.unit_price,
-                    cost_per_unit=getattr(item.product, "cost", Decimal("0.00")) if is_product else Decimal("0.00")
+                item.product.stock_quantity -= qty
+                item.product.save()
+
+            OrderItem.objects.create(
+                order=final_order,
+                product=item.product,
+                batch=item.batch,
+                quantity=qty,
+                price_per_unit=item.unit_price,
+                cost_per_unit=(
+                    getattr(
+                        item.product,
+                        "cost",
+                        Decimal("0.00")
+                    )
+                    if item.product
+                    else Decimal("0.00")
                 )
+            )
 
-                # Stock Log Record
-                try:
-                    StockLog.objects.create(
-                        item=inventory,
-                        action="use",
-                        quantity=qty_to_deduct,
-                        notes=f"Fulfilled reservation {pending_order.order_number}"
+            try:
+                StockLog.objects.create(
+                    item=item.product or item.batch,
+                    action="use",
+                    quantity=qty,
+                    notes=(
+                        f"Fulfilled reservation "
+                        f"{pending_order.order_number}"
                     )
-                except Exception:
-                    pass
+                )
+            except Exception:
+                pass
 
-        # 4. Pull child aggregate numbers to assign system calculation fields properly
+        # ---------------------------------
+        # CALCULATE ORDER TOTALS
+        # ---------------------------------
         final_order.calculate_totals()
 
-    def process_cancellation_release(self, pending_order):
-        """Optional hook placeholder for cancellation logic."""
-        pass
+        # ---------------------------------
+        # RECORD DEPOSIT AS PAYMENT
+        # ---------------------------------
+        if amount_paid > 0:
+
+            Payment.objects.create(
+                order=final_order,
+                amount=amount_paid,
+                method="deposit",
+                reference=(
+                    f"Deposit "
+                    f"{pending_order.order_number}"
+                )
+            )
+
+            final_order.calculate_totals()
+
+        # ---------------------------------
+        # FINANCE
+        # ---------------------------------
+        if amount_paid > 0:
+
+            period = get_open_period(
+                pending_order.farm
+            )
+
+            Income.objects.create(
+                farm=pending_order.farm,
+                period=period,
+                amount=amount_paid,
+                source=(
+                    f"Reservation "
+                    f"{pending_order.order_number}"
+                )
+            )
+
+            recalculate_period(period)
+
+        # ---------------------------------
+        # CLOSE RESERVATION
+        # ---------------------------------
+        pending_order.status = "fulfilled"
+
+        # move receivable to sales
+        if pending_order.deposit_paid > pending_order.total_amount:
+            pending_order.deposit_paid = pending_order.total_amount
+
+        pending_order.save(
+            update_fields=[
+                "status",
+                "deposit_paid",
+            ]
+        )
+
+        return final_order
