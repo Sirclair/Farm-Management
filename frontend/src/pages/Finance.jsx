@@ -148,7 +148,7 @@ export default function Finance() {
     return [
       ...income.map((i) => ({ ...i, type: 'Income' })),
       ...expenses.map((e) => ({ ...e, type: 'Expense' })),
-    ].sort((a, b) => new Date(b.date) - new Date(a.date));
+    ].sort((a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date));
   }, [income, expenses]);
 
   // Read backend aggregated values directly (Automatic sales entries are included here now)
@@ -161,13 +161,26 @@ export default function Finance() {
     { name: 'Expenses', value: totalExpenses || 0, color: '#f43f5e' },
   ];
 
+  // FIXED: Resolves missing date indices by parsing read-only 'created_at' timestamp targets
   const weeklyTrendData = useMemo(() => {
     const dailyMap = {};
+
     ledger.forEach((item) => {
-      if (!dailyMap[item.date]) dailyMap[item.date] = { date: item.date, Income: 0, Expenses: 0 };
-      if (item.type === 'Income') dailyMap[item.date].Income += item.amount;
-      else dailyMap[item.date].Expenses += item.amount;
+      const rawDate = item.date || item.created_at || new Date().toISOString();
+      const cleanDate = rawDate.split('T')[0];
+
+      if (!dailyMap[cleanDate]) {
+        dailyMap[cleanDate] = { date: cleanDate, Income: 0, Expenses: 0 };
+      }
+
+      const numericalAmount = Number(item.amount || 0);
+      if (item.type === 'Income') {
+        dailyMap[cleanDate].Income += numericalAmount;
+      } else {
+        dailyMap[cleanDate].Expenses += numericalAmount;
+      }
     });
+
     return Object.values(dailyMap)
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .slice(-7);
@@ -385,7 +398,7 @@ export default function Finance() {
                         className="hover:bg-white/[0.02] transition duration-150"
                       >
                         <td className="py-4 px-6 sm:px-8 text-zinc-400 text-sm whitespace-nowrap font-medium">
-                          {row.date}
+                          {(row.date || row.created_at || '').split('T')[0]}
                         </td>
                         <td className="py-4 px-4 text-zinc-200 text-sm font-semibold max-w-[180px] sm:max-w-none truncate sm:whitespace-normal">
                           {row.source || row.description || '-'}

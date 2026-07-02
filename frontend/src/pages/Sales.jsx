@@ -9,6 +9,8 @@ import {
   Wallet,
   Eye,
   Box,
+  Coins,
+  DollarSign,
 } from 'lucide-react';
 
 import api from '../api/axios';
@@ -20,11 +22,17 @@ import AddProductModal from '../components/AddProductModal';
 // =========================================================
 // QUICK STAT (SYSTEM CARD)
 // =========================================================
-function QuickStat({ label, value, icon, sub, isWarning }) {
+function QuickStat({ label, value, icon, sub, isWarning, isHighlight }) {
   return (
-    <div className="bg-white/5 backdrop-blur-xl p-8 rounded-[32px] shadow-2xl">
+    <div
+      className={`bg-white/5 backdrop-blur-xl p-8 rounded-[32px] shadow-2xl border ${isHighlight ? 'border-emerald-500/20 bg-gradient-to-b from-white/5 to-emerald-500/[0.02]' : 'border-white/[0.02]'}`}
+    >
       <div className="flex justify-between items-start mb-4">
-        <div className="p-4 bg-white/5 rounded-2xl text-zinc-400">{icon}</div>
+        <div
+          className={`p-4 rounded-2xl ${isHighlight ? 'bg-emerald-500/10 text-emerald-400' : 'bg-white/5 text-zinc-400'}`}
+        >
+          {icon}
+        </div>
       </div>
 
       <p className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500 mb-1">
@@ -32,7 +40,7 @@ function QuickStat({ label, value, icon, sub, isWarning }) {
       </p>
 
       <h2
-        className={`text-4xl font-black tracking-tighter ${isWarning ? 'text-orange-400' : 'text-white'}`}
+        className={`text-4xl font-black tracking-tighter ${isWarning ? 'text-orange-400' : isHighlight ? 'text-emerald-400' : 'text-white'}`}
       >
         {value}
       </h2>
@@ -63,6 +71,8 @@ export default function Sales() {
       const res = await api.get('/api/my-farm/sales/orders/');
       const data = Array.isArray(res.data) ? res.data : res.data.results || [];
       setOrders(data);
+    } catch (error) {
+      console.error('FAILED TO FETCH ACCOUNTING LEDGER:', error);
     } finally {
       setLoading(false);
     }
@@ -80,14 +90,26 @@ export default function Sales() {
     return { total, paid, balance };
   };
 
+  // Target today's ISO date string format (YYYY-MM-DD)
+  const todayString = new Date().toISOString().split('T')[0];
+
+  // CALCULATE LIVE METRICS & FILTER TODAY'S REVENUE EXPLICITLY
   const stats = orders.reduce(
     (acc, o) => {
-      const { total, balance } = getMetrics(o);
-      acc.total += total;
+      const { total, paid, balance } = getMetrics(o);
+      acc.sales += total;
+      acc.revenue += paid;
       acc.debt += balance;
+
+      // Extract transaction timestamp (fallback matching on created_at or date)
+      const orderDateStr = o.created_at || o.date;
+      if (orderDateStr && orderDateStr.startsWith(todayString)) {
+        acc.dailyTotalSales += total;
+      }
+
       return acc;
     },
-    { total: 0, debt: 0, count: orders.length }
+    { sales: 0, revenue: 0, debt: 0, dailyTotalSales: 0, count: orders.length }
   );
 
   const filtered = orders.filter((o) => {
@@ -135,7 +157,7 @@ export default function Sales() {
                 size={18}
               />
               <input
-                className="bg-white/5 rounded-2xl py-4 pl-12 pr-6 w-80 outline-none text-white"
+                className="bg-white/5 rounded-2xl py-4 pl-12 pr-6 w-80 outline-none text-white focus:ring-1 focus:ring-emerald-500/30 transition-all text-xs font-semibold"
                 placeholder="Search orders..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -144,7 +166,7 @@ export default function Sales() {
 
             <button
               onClick={() => setOpenProductModal(true)}
-              className="bg-white/5 hover:bg-white/10 px-6 py-4 rounded-2xl font-black uppercase text-[11px]"
+              className="bg-white/5 hover:bg-white/10 px-6 py-4 rounded-2xl font-black uppercase text-[11px] transition-colors"
             >
               <Box size={18} className="inline mr-2" />
               Add Product
@@ -152,7 +174,7 @@ export default function Sales() {
 
             <button
               onClick={() => setOpenSaleModal(true)}
-              className="bg-emerald-500 text-black px-6 py-4 rounded-2xl font-black uppercase text-[11px]"
+              className="bg-emerald-500 text-black hover:bg-emerald-400 px-6 py-4 rounded-2xl font-black uppercase text-[11px] transition-colors"
             >
               <Plus size={18} className="inline mr-2" />
               New Sale
@@ -163,90 +185,126 @@ export default function Sales() {
         {/* ========================================================= */}
         {/* STATS */}
         {/* ========================================================= */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
+        <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-5 mb-12">
           <QuickStat
-            label="TOTAL VOLUME"
-            value={`R ${stats.total.toLocaleString('en-ZA')}`}
-            icon={<TrendingUp />}
-            sub="Gross revenue"
+            label="DAILY TOTAL SALES"
+            value={`R ${stats.dailyTotalSales.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`}
+            icon={<DollarSign />}
+            sub="Invoiced today"
+            isHighlight={true}
+          />
+
+          <QuickStat
+            label="REVENUE"
+            value={`R ${stats.revenue.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`}
+            icon={<TrendingUp className="text-emerald-400" />}
+            sub="Cash collected"
+          />
+
+          <QuickStat
+            label="SALES VALUE"
+            value={`R ${stats.sales.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`}
+            icon={<Package className="text-blue-400" />}
+            sub="All invoices compiled"
           />
 
           <QuickStat
             label="OUTSTANDING"
-            value={`R ${stats.debt.toLocaleString('en-ZA')}`}
+            value={`R ${stats.debt.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`}
             icon={<Wallet />}
             sub="Unpaid balances"
             isWarning={stats.debt > 0}
           />
 
-          <QuickStat label="ORDERS" value={stats.count} icon={<Package />} sub="All transactions" />
+          <QuickStat
+            label="VOLUME"
+            value={stats.count}
+            icon={<Coins className="text-zinc-400" />}
+            sub="All transactions logged"
+          />
         </div>
 
         {/* ========================================================= */}
         {/* TABLE (FULL BORDERLESS SYSTEM) */}
         {/* ========================================================= */}
-        <div className="bg-white/5 backdrop-blur-xl rounded-[40px] overflow-hidden shadow-2xl">
-          <div className="px-10 py-6 flex justify-between text-zinc-500 text-[11px] uppercase tracking-widest">
+        <div className="bg-white/5 backdrop-blur-xl rounded-[40px] overflow-hidden shadow-2xl border border-white/5">
+          <div className="px-10 py-6 flex justify-between text-zinc-500 text-[11px] uppercase tracking-widest bg-black/10">
             <span>Transaction Ledger</span>
             <span>{filtered.length} results</span>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-white">
-              <thead className="text-zinc-500 text-[11px] uppercase">
-                <tr>
-                  <th className="p-6 text-left">Order</th>
-                  <th className="text-left">Customer</th>
-                  <th>Total</th>
-                  <th>Paid</th>
-                  <th>Balance</th>
-                  <th>Status</th>
-                  <th className="text-right p-6">Action</th>
-                </tr>
-              </thead>
+            {loading ? (
+              <div className="p-20 text-center text-xs font-black uppercase tracking-widest text-zinc-500">
+                Loading transaction architecture ledger...
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="p-20 text-center text-zinc-500 font-bold text-sm">
+                No orders discovered matching the current filters.
+              </div>
+            ) : (
+              <table className="w-full text-white">
+                <thead className="text-zinc-500 text-[11px] uppercase border-b border-white/5">
+                  <tr>
+                    <th className="p-6 text-left">Order</th>
+                    <th className="text-left">Customer</th>
+                    <th className="text-left">Total</th>
+                    <th className="text-left">Paid</th>
+                    <th className="text-left">Balance</th>
+                    <th className="text-left">Status</th>
+                    <th className="text-right p-6">Action</th>
+                  </tr>
+                </thead>
 
-              <tbody>
-                {filtered.map((o) => {
-                  const { total, paid, balance } = getMetrics(o);
-                  const customer = o.customer_name || 'Walk-in';
+                <tbody className="divide-y divide-white/[0.02]">
+                  {filtered.map((o) => {
+                    const { total, paid, balance } = getMetrics(o);
+                    const customer = o.customer_name || 'Walk-in';
 
-                  return (
-                    <tr key={o.id} className="hover:bg-white/5 transition-all">
-                      <td className="p-6 font-black">#{o.id}</td>
-                      <td>{customer}</td>
-                      <td>R {total.toFixed(2)}</td>
-                      <td>R {paid.toFixed(2)}</td>
+                    return (
+                      <tr key={o.id} className="hover:bg-white/5 transition-all">
+                        <td className="p-6 font-black text-xs text-zinc-400">#{o.id}</td>
+                        <td className="font-bold text-sm">{customer}</td>
+                        <td className="text-sm font-semibold">R {total.toFixed(2)}</td>
+                        <td className="text-sm font-semibold text-emerald-400">
+                          R {paid.toFixed(2)}
+                        </td>
 
-                      <td className={balance > 0 ? 'text-orange-400' : 'text-zinc-400'}>
-                        R {balance.toFixed(2)}
-                      </td>
-
-                      <td>
-                        {balance <= 0 ? (
-                          <span className="text-emerald-400 text-xs font-black uppercase">
-                            Paid
-                          </span>
-                        ) : (
-                          <span className="text-orange-400 text-xs font-black uppercase">Due</span>
-                        )}
-                      </td>
-
-                      <td className="text-right p-6">
-                        <button
-                          onClick={() => {
-                            setSelectedOrder(o);
-                            setDetailsOpen(true);
-                          }}
-                          className="p-3 bg-white/5 rounded-xl hover:bg-emerald-500 hover:text-black transition"
+                        <td
+                          className={`text-sm font-semibold ${balance > 0 ? 'text-orange-400' : 'text-zinc-400'}`}
                         >
-                          <Eye size={18} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                          R {balance.toFixed(2)}
+                        </td>
+
+                        <td>
+                          {balance <= 0 ? (
+                            <span className="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider">
+                              Paid
+                            </span>
+                          ) : (
+                            <span className="inline-block bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider">
+                              Due
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="text-right p-6">
+                          <button
+                            onClick={() => {
+                              setSelectedOrder(o);
+                              setDetailsOpen(true);
+                            }}
+                            className="p-3 bg-white/5 rounded-xl hover:bg-emerald-500 hover:text-black transition-all"
+                          >
+                            <Eye size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>
@@ -258,10 +316,16 @@ export default function Sales() {
         refreshSales={fetchOrders}
       />
       <AddProductModal isOpen={openProductModal} onClose={() => setOpenProductModal(false)} />
+
+      {/* FIXED: Added direct refreshSales function handler alongside explicit onClose stack re-fetching */}
       <OrderDetailsModal
         isOpen={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
         order={selectedOrder}
+        onClose={() => {
+          setDetailsOpen(false);
+          fetchOrders();
+        }}
+        refreshSales={fetchOrders}
       />
     </MainLayout>
   );

@@ -64,11 +64,21 @@ export default function PendingOrders() {
     setExpandedOrders((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Quick Action State Mutators
+  // Quick Action State Mutators (FIXED: Handles transition payload requirement for fulfillment state changes)
   const updateOrderStatus = async (id, statusTarget) => {
     try {
-      await api.patch(`/api/my-farm/sales/pending-orders/${id}/`, { status: statusTarget });
-      showToast(`Order status updated to ${statusTarget.toUpperCase()} successfully.`, 'success');
+      const payload =
+        statusTarget === 'fulfilled'
+          ? {
+              status: 'fulfilled',
+              fulfilled_at: new Date().toISOString(),
+            }
+          : {
+              status: statusTarget,
+            };
+
+      await api.patch(`/api/my-farm/sales/pending-orders/${id}/`, payload);
+      showToast(`Reservation moved to ${statusTarget.toUpperCase()} successfully.`, 'success');
       await fetchOrders();
     } catch (error) {
       showToast(error.response?.data?.error || 'Failed to update order status metric.', 'error');
@@ -158,18 +168,27 @@ export default function PendingOrders() {
     return matchesSearch && matchesStatus;
   });
 
-  const totalReservationsValue = filteredOrders.reduce(
-    (sum, o) => sum + Number(o.subtotal || o.total_amount || 0),
-    0
-  );
-  const totalDepositsCollected = filteredOrders.reduce(
-    (sum, o) => sum + Number(o.deposit_paid || 0),
-    0
-  );
-  const totalOutstandingBalance = filteredOrders.reduce(
-    (sum, o) => sum + Number(o.balance_due || 0),
-    0
-  );
+  // FIXED: Calculations exclude completed or aborted statuses to preserve active accounting validity
+  const totalReservationsValue = filteredOrders.reduce((sum, order) => {
+    if (order.status === 'fulfilled' || order.status === 'cancelled') {
+      return sum;
+    }
+    return sum + Number(order.total_amount || order.subtotal || 0);
+  }, 0);
+
+  const totalDepositsCollected = filteredOrders.reduce((sum, order) => {
+    if (order.status === 'fulfilled' || order.status === 'cancelled') {
+      return sum;
+    }
+    return sum + Number(order.deposit_paid || 0);
+  }, 0);
+
+  const totalOutstandingBalance = filteredOrders.reduce((sum, order) => {
+    if (order.status === 'fulfilled' || order.status === 'cancelled') {
+      return sum;
+    }
+    return sum + Number(order.balance_due || 0);
+  }, 0);
 
   return (
     <MainLayout>
@@ -287,7 +306,7 @@ export default function PendingOrders() {
                 R {totalReservationsValue.toFixed(2)}
               </div>
               <div className="text-[11px] text-zinc-500 mt-1">
-                Gross worth of current filter view allocation
+                Gross worth of active outstanding pipeline allocations
               </div>
             </div>
             <div className="bg-[#111827] border border-white/5 rounded-3xl p-6 shadow-xl">
@@ -298,7 +317,7 @@ export default function PendingOrders() {
                 R {totalDepositsCollected.toFixed(2)}
               </div>
               <div className="text-[11px] text-zinc-500 mt-1">
-                Secured cash held within this active filter parameters
+                Secured deposits held inside outstanding bookings
               </div>
             </div>
             <div className="bg-[#111827] border border-white/5 rounded-3xl p-6 shadow-xl">
@@ -309,7 +328,7 @@ export default function PendingOrders() {
                 R {totalOutstandingBalance.toFixed(2)}
               </div>
               <div className="text-[11px] text-zinc-500 mt-1">
-                Collectible logistics revenue remaining in view
+                Collectible pipeline revenue remaining to clear
               </div>
             </div>
           </div>
@@ -412,10 +431,13 @@ export default function PendingOrders() {
                         <span className="text-[10px] uppercase text-zinc-500 font-black tracking-widest block mb-0.5">
                           Balance Due
                         </span>
+                        {/* FIXED: Replaced layout style state label to prevent users from thinking fulfilled orders remain outstanding */}
                         <div
-                          className={`text-lg font-black tracking-tight ${isFulfilled ? 'text-zinc-500 line-through opacity-60' : 'text-orange-400'}`}
+                          className={`text-lg font-black tracking-tight ${
+                            isFulfilled ? 'text-emerald-400' : 'text-orange-400'
+                          }`}
                         >
-                          R {balanceDue.toFixed(2)}
+                          {isFulfilled ? 'Transferred' : `R ${balanceDue.toFixed(2)}`}
                         </div>
                       </div>
                       <div>
@@ -582,7 +604,7 @@ export default function PendingOrders() {
           </div>
         )}
 
-        {/* MODAL SYSTEM (FIXED PROP KEY) */}
+        {/* MODAL SYSTEM */}
         <CreatePendingOrderModal
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}

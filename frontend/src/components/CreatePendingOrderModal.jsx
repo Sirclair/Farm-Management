@@ -383,7 +383,7 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                       full_name: e.target.value,
                     })
                   }
-                  className="bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3"
+                  className="bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
                 />
 
                 <input
@@ -396,7 +396,7 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                       phone: e.target.value,
                     })
                   }
-                  className="bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3"
+                  className="bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
                 />
 
                 <input
@@ -409,7 +409,7 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                       email: e.target.value,
                     })
                   }
-                  className="bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3"
+                  className="bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
                 />
 
                 <input
@@ -422,14 +422,14 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                       address: e.target.value,
                     })
                   }
-                  className="bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3"
+                  className="bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
                 />
 
                 <button
                   type="button"
                   onClick={handleCreateCustomer}
                   disabled={customerLoading}
-                  className="md:col-span-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl py-3 font-bold text-white transition"
+                  className="md:col-span-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl py-3 font-bold text-white transition disabled:opacity-50"
                 >
                   {customerLoading ? (
                     <div className="flex items-center justify-center gap-2">
@@ -450,11 +450,13 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                     customer: e.target.value,
                   })
                 }
-                className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3"
+                className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition appearance-none"
               >
-                <option value="">Select Customer...</option>
+                <option value="" className="bg-[#0f172a]">
+                  Select Customer...
+                </option>
                 {customers.map((customer) => (
-                  <option key={customer.id} value={customer.id}>
+                  <option key={customer.id} value={customer.id} className="bg-[#0f172a]">
                     {customer.full_name}
                     {customer.phone ? ` (${customer.phone})` : ''}
                   </option>
@@ -481,7 +483,7 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                 }
                 dateFormat="yyyy-MM-dd"
                 placeholderText="Select date"
-                className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3 text-white"
+                className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition"
               />
             </div>
 
@@ -499,11 +501,13 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                     delivery_time: e.target.value,
                   })
                 }
-                className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3"
+                className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition appearance-none"
               >
-                <option value="">Select Time Slot...</option>
+                <option value="" className="bg-[#0f172a]">
+                  Select Time Slot...
+                </option>
                 {TIME_SLOTS.map((slot) => (
-                  <option key={slot.value} value={slot.value}>
+                  <option key={slot.value} value={slot.value} className="bg-[#0f172a]">
                     {slot.label}
                   </option>
                 ))}
@@ -522,7 +526,7 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                   })
                 }
                 placeholder="Optional delivery location"
-                className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3"
+                className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
               />
             </div>
           </div>
@@ -537,7 +541,7 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
               <button
                 type="button"
                 onClick={handleAddItem}
-                className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-semibold"
+                className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-semibold transition"
               >
                 <Plus size={15} />
                 Add Item
@@ -552,10 +556,14 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                     <select
                       value={item.sale_type}
                       onChange={(e) => handleItemChange(index, 'sale_type', e.target.value)}
-                      className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-3 py-3"
+                      className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-3 py-3 text-white focus:outline-none focus:border-emerald-500 transition"
                     >
-                      <option value="product">Product</option>
-                      <option value="live">Live Broiler</option>
+                      <option value="product" className="bg-[#0f172a]">
+                        Product
+                      </option>
+                      <option value="live" className="bg-[#0f172a]">
+                        Live Broiler
+                      </option>
                     </select>
                   </div>
 
@@ -565,11 +573,13 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                       <select
                         value={item.product}
                         onChange={(e) => handleItemChange(index, 'product', e.target.value)}
-                        className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-3 py-3"
+                        className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-3 py-3 text-white focus:outline-none focus:border-emerald-500 transition text-ellipsis overflow-hidden"
                       >
-                        <option value="">Select Product...</option>
+                        <option value="" className="bg-[#0f172a]">
+                          Select Product...
+                        </option>
                         {products.map((product) => (
-                          <option key={product.id} value={product.id}>
+                          <option key={product.id} value={product.id} className="bg-[#0f172a]">
                             {product.name}
                           </option>
                         ))}
@@ -578,11 +588,13 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                       <select
                         value={item.batch}
                         onChange={(e) => handleItemChange(index, 'batch', e.target.value)}
-                        className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-3 py-3"
+                        className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-3 py-3 text-white focus:outline-none focus:border-emerald-500 transition text-ellipsis overflow-hidden"
                       >
-                        <option value="">Select Batch...</option>
+                        <option value="" className="bg-[#0f172a]">
+                          Select Batch...
+                        </option>
                         {batches.map((batch) => (
-                          <option key={batch.id} value={batch.id}>
+                          <option key={batch.id} value={batch.id} className="bg-[#0f172a]">
                             Batch #{batch.batch_number} {batch.name ? `(${batch.name})` : ''}
                           </option>
                         ))}
@@ -597,7 +609,7 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                       min="1"
                       value={item.quantity_ordered}
                       onChange={(e) => handleItemChange(index, 'quantity_ordered', e.target.value)}
-                      className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-3 py-3"
+                      className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-3 py-3 text-white focus:outline-none focus:border-emerald-500 transition"
                     />
                   </div>
 
@@ -608,7 +620,7 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                       step="0.01"
                       value={item.unit_price}
                       onChange={(e) => handleItemChange(index, 'unit_price', e.target.value)}
-                      className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-3 py-3"
+                      className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl px-3 py-3 text-white focus:outline-none focus:border-emerald-500 transition"
                     />
                   </div>
 
@@ -628,7 +640,7 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                       type="button"
                       onClick={() => handleRemoveItem(index)}
                       disabled={formData.items.length === 1}
-                      className="h-12 w-12 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition disabled:opacity-30"
+                      className="h-12 w-12 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition disabled:opacity-30 flex items-center justify-center"
                     >
                       <Trash2 size={17} />
                     </button>
@@ -653,7 +665,7 @@ export default function CreatePendingOrderModal({ isOpen, onClose, onCreated }) 
                 })
               }
               placeholder="Add internal notes or delivery instructions..."
-              className="w-full bg-[#0b0f19] border border-slate-800 rounded-2xl px-4 py-4 resize-none"
+              className="w-full bg-[#0b0f19] border border-slate-800 rounded-2xl px-4 py-4 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition resize-none"
             />
           </div>
         </div>

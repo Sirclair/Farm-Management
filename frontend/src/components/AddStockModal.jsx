@@ -63,12 +63,17 @@ export default function AddStockModal({ isOpen, onClose, onSuccess }) {
 
     try {
       setLoading(true);
+      setError('');
 
+      const unitPrice = Number(formData.costPerUnit);
+      const totalCalculatedCost = quantity * unitPrice;
+
+      // 1. Record stock item inside inventory architecture
       await api.post('/api/my-farm/inventory/items/purchase/', {
         name: formData.name,
         category: formData.category,
         quantity: quantity,
-        unit_price: Number(formData.costPerUnit),
+        unit_price: unitPrice,
         inventory_unit: formData.inventoryUnit,
         purchase_unit: formData.purchaseUnit,
         conversion_factor: factor,
@@ -76,11 +81,36 @@ export default function AddStockModal({ isOpen, onClose, onSuccess }) {
         notes: formData.notes,
       });
 
-      setSuccess('Stock recorded');
+      // 2. SUCCESS AUTOMATION HOOK: Record this purchase directly to your Expenses endpoint
+      if (totalCalculatedCost > 0) {
+        // Fallback array representing valid choices on the backend Expense model
+        const validExpenseCategories = [
+          'feed',
+          'medicine',
+          'equipment',
+          'labor',
+          'utilities',
+          'fuel',
+          'other',
+        ];
+        const expenseCategory = validExpenseCategories.includes(formData.category)
+          ? formData.category
+          : 'other';
+
+        await api.post('/api/my-farm/finance/expenses/', {
+          amount: totalCalculatedCost,
+          category: expenseCategory,
+          description: `Inventory Purchase: ${formData.name.toUpperCase()} (${quantity} ${formData.purchaseUnit})`,
+          date: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+        });
+      }
+
+      setSuccess('Stock recorded & logged as expense');
       onSuccess?.();
 
       setTimeout(() => {
         setFormData(initial);
+        setSuccess('');
         onClose();
       }, 1200);
     } catch (err) {
@@ -307,7 +337,11 @@ export default function AddStockModal({ isOpen, onClose, onSuccess }) {
             onClick={submit}
             className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none text-zinc-950 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wide shadow-md shadow-emerald-500/5"
           >
-            {loading ? <Loader2 className="animate-spin" size={18} /> : 'Record Inventory'}
+            {loading ? (
+              <Loader2 className="animate-spin" size={18} />
+            ) : (
+              'Record Inventory & Expense'
+            )}
           </button>
         </div>
       </div>
